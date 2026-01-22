@@ -57,6 +57,23 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        status: {
+          critical: "hsl(var(--status-critical))",
+          warning: "hsl(var(--status-warning))",
+          stable: "hsl(var(--status-stable))",
+          normal: "hsl(var(--status-normal))",
+        },
+        vital: {
+          heart: "hsl(var(--vital-heart))",
+          bp: "hsl(var(--vital-bp))",
+          oxygen: "hsl(var(--vital-oxygen))",
+          temp: "hsl(var(--vital-temp))",
+        },
+        dept: {
+          opd: "hsl(var(--dept-opd))",
+          ipd: "hsl(var(--dept-ipd))",
+          emergency: "hsl(var(--dept-emergency))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
