@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { VitalSignCard } from "@/components/dashboard/VitalSignCard";
 import { VitalSignsChart } from "@/components/dashboard/VitalSignsChart";
+import { MedicationScheduler } from "@/components/medications/MedicationScheduler";
+import { getMedicationsForPatient } from "@/data/mockMedications";
 import {
   User,
   Bed,
@@ -98,14 +100,17 @@ export function PatientDetailModal({ patient, open, onClose }: PatientDetailModa
         </div>
 
         <Tabs defaultValue="vitals">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="vitals">Vital Signs</TabsTrigger>
-            <TabsTrigger value="charts">Live Monitor</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="vitals">Vitals</TabsTrigger>
+            <TabsTrigger value="charts">Monitor</TabsTrigger>
             <TabsTrigger value="medications">
-              Medications ({patient.medications.length})
+              Meds
+            </TabsTrigger>
+            <TabsTrigger value="scheduler">
+              Schedule
             </TabsTrigger>
             <TabsTrigger value="notes">
-              Notes ({patient.notes.length})
+              Notes
             </TabsTrigger>
           </TabsList>
 
@@ -133,6 +138,13 @@ export function PatientDetailModal({ patient, open, onClose }: PatientDetailModa
                 ))
               )}
             </div>
+          </TabsContent>
+
+          <TabsContent value="scheduler" className="mt-4">
+            <MedicationScheduler 
+              medications={getMedicationsForPatient(patient.id)}
+              patientName={patient.name}
+            />
           </TabsContent>
 
           <TabsContent value="notes" className="mt-4">
