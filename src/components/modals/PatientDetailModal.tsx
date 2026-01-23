@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { VitalSignCard } from "@/components/dashboard/VitalSignCard";
+import { VitalSignsChart } from "@/components/dashboard/VitalSignsChart";
 import {
   User,
   Bed,
@@ -97,8 +98,9 @@ export function PatientDetailModal({ patient, open, onClose }: PatientDetailModa
         </div>
 
         <Tabs defaultValue="vitals">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="vitals">Vital Signs</TabsTrigger>
+            <TabsTrigger value="charts">Live Monitor</TabsTrigger>
             <TabsTrigger value="medications">
               Medications ({patient.medications.length})
             </TabsTrigger>
@@ -109,6 +111,13 @@ export function PatientDetailModal({ patient, open, onClose }: PatientDetailModa
 
           <TabsContent value="vitals" className="mt-4">
             <VitalSignCard vitals={patient.vitals} status={patient.status} />
+          </TabsContent>
+
+          <TabsContent value="charts" className="mt-4">
+            <VitalSignsChart 
+              initialVitals={patient.vitals} 
+              patientName={patient.name}
+            />
           </TabsContent>
 
           <TabsContent value="medications" className="mt-4">
