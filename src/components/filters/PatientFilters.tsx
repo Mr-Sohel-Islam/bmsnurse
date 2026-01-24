@@ -10,6 +10,13 @@ import {
 import { Search, X, Filter } from "lucide-react";
 import type { PatientStatus } from "@/data/mockPatients";
 
+interface Nurse {
+  id: string;
+  name: string;
+  shift: string;
+  department: string;
+}
+
 interface PatientFiltersProps {
   searchQuery: string;
   onSearchChange: (value: string) => void;
@@ -17,7 +24,7 @@ interface PatientFiltersProps {
   onStatusChange: (value: PatientStatus | 'all') => void;
   nurseFilter: string;
   onNurseChange: (value: string) => void;
-  nurses: string[];
+  nurses: string[] | Nurse[];
   onClearFilters: () => void;
 }
 
@@ -32,6 +39,11 @@ export function PatientFilters({
   onClearFilters,
 }: PatientFiltersProps) {
   const hasActiveFilters = searchQuery || statusFilter !== 'all' || nurseFilter !== 'all';
+
+  // Normalize nurses to handle both string[] and Nurse[] formats
+  const nurseNames = nurses.map((nurse) => 
+    typeof nurse === 'string' ? nurse : nurse.name
+  );
 
   return (
     <div className="flex flex-wrap items-center gap-4 p-4 bg-card rounded-xl border">
@@ -69,7 +81,7 @@ export function PatientFilters({
         </SelectTrigger>
         <SelectContent className="bg-popover">
           <SelectItem value="all">All Nurses</SelectItem>
-          {nurses.map((nurse) => (
+          {nurseNames.map((nurse) => (
             <SelectItem key={nurse} value={nurse}>
               {nurse}
             </SelectItem>
