@@ -71,25 +71,25 @@ const SettingsPage = () => {
       headerActions={
         <Button variant="outline" size="sm" className="gap-2 text-destructive hover:text-destructive">
           <LogOut className="h-4 w-4" />
-          Sign Out
+          <span className="hidden sm:inline">Sign Out</span>
         </Button>
       }
     >
       <Tabs defaultValue="profile" className="space-y-6">
         <TabsList className="grid w-full grid-cols-4 lg:w-[500px]">
-          <TabsTrigger value="profile" className="gap-2">
+          <TabsTrigger value="profile" className="gap-1 sm:gap-2">
             <User className="h-4 w-4" />
             <span className="hidden sm:inline">Profile</span>
           </TabsTrigger>
-          <TabsTrigger value="notifications" className="gap-2">
+          <TabsTrigger value="notifications" className="gap-1 sm:gap-2">
             <Bell className="h-4 w-4" />
-            <span className="hidden sm:inline">Notifications</span>
+            <span className="hidden sm:inline">Alerts</span>
           </TabsTrigger>
-          <TabsTrigger value="appearance" className="gap-2">
+          <TabsTrigger value="appearance" className="gap-1 sm:gap-2">
             <Palette className="h-4 w-4" />
-            <span className="hidden sm:inline">Appearance</span>
+            <span className="hidden sm:inline">Theme</span>
           </TabsTrigger>
-          <TabsTrigger value="security" className="gap-2">
+          <TabsTrigger value="security" className="gap-1 sm:gap-2">
             <Shield className="h-4 w-4" />
             <span className="hidden sm:inline">Security</span>
           </TabsTrigger>
@@ -98,20 +98,20 @@ const SettingsPage = () => {
         {/* Profile Tab */}
         <TabsContent value="profile">
           <Card>
-            <CardHeader>
-              <CardTitle>Profile Information</CardTitle>
-              <CardDescription>
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg sm:text-xl">Profile Information</CardTitle>
+              <CardDescription className="text-sm">
                 Update your personal information and contact details.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="flex items-center gap-6">
-                <Avatar className="h-20 w-20">
-                  <AvatarFallback className="text-2xl bg-primary/20 text-primary">
+              <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
+                <Avatar className="h-16 w-16 sm:h-20 sm:w-20">
+                  <AvatarFallback className="text-xl sm:text-2xl bg-primary/20 text-primary">
                     SJ
                   </AvatarFallback>
                 </Avatar>
-                <div>
+                <div className="text-center sm:text-left">
                   <Button variant="outline" size="sm">
                     Change Photo
                   </Button>
@@ -123,7 +123,7 @@ const SettingsPage = () => {
 
               <Separator />
 
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="name">Full Name</Label>
                   <Input
@@ -166,14 +166,14 @@ const SettingsPage = () => {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-2 sm:col-span-2 md:col-span-1">
                   <Label htmlFor="role">Role</Label>
                   <Input id="role" value={profile.role} disabled className="bg-muted" />
                 </div>
               </div>
 
               <div className="flex justify-end">
-                <Button onClick={handleSaveProfile} className="gap-2">
+                <Button onClick={handleSaveProfile} className="gap-2 w-full sm:w-auto">
                   <Save className="h-4 w-4" />
                   Save Changes
                 </Button>
@@ -185,19 +185,19 @@ const SettingsPage = () => {
         {/* Notifications Tab */}
         <TabsContent value="notifications">
           <Card>
-            <CardHeader>
-              <CardTitle>Notification Preferences</CardTitle>
-              <CardDescription>
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg sm:text-xl">Notification Preferences</CardTitle>
+              <CardDescription className="text-sm">
                 Configure how and when you receive notifications.
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="space-y-4 sm:space-y-6">
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>Critical Alerts</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Receive immediate alerts for critical patient conditions
+                <div className="flex items-center justify-between gap-4">
+                  <div className="space-y-0.5 flex-1 min-w-0">
+                    <Label className="text-sm">Critical Alerts</Label>
+                    <p className="text-xs sm:text-sm text-muted-foreground">
+                      Immediate alerts for critical conditions
                     </p>
                   </div>
                   <Switch
@@ -210,11 +210,11 @@ const SettingsPage = () => {
 
                 <Separator />
 
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>Medication Reminders</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Get notified when medications are due or overdue
+                <div className="flex items-center justify-between gap-4">
+                  <div className="space-y-0.5 flex-1 min-w-0">
+                    <Label className="text-sm">Medication Reminders</Label>
+                    <p className="text-xs sm:text-sm text-muted-foreground">
+                      Notified when medications are due
                     </p>
                   </div>
                   <Switch
@@ -227,11 +227,11 @@ const SettingsPage = () => {
 
                 <Separator />
 
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>Shift Changes</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Receive reminders before shift changes
+                <div className="flex items-center justify-between gap-4">
+                  <div className="space-y-0.5 flex-1 min-w-0">
+                    <Label className="text-sm">Shift Changes</Label>
+                    <p className="text-xs sm:text-sm text-muted-foreground">
+                      Reminders before shift changes
                     </p>
                   </div>
                   <Switch
@@ -244,11 +244,11 @@ const SettingsPage = () => {
 
                 <Separator />
 
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>Patient Updates</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Get notified about changes to assigned patients
+                <div className="flex items-center justify-between gap-4">
+                  <div className="space-y-0.5 flex-1 min-w-0">
+                    <Label className="text-sm">Patient Updates</Label>
+                    <p className="text-xs sm:text-sm text-muted-foreground">
+                      Changes to assigned patients
                     </p>
                   </div>
                   <Switch
@@ -261,11 +261,11 @@ const SettingsPage = () => {
 
                 <Separator />
 
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>Email Notifications</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Also send notifications to your email
+                <div className="flex items-center justify-between gap-4">
+                  <div className="space-y-0.5 flex-1 min-w-0">
+                    <Label className="text-sm">Email Notifications</Label>
+                    <p className="text-xs sm:text-sm text-muted-foreground">
+                      Also send to your email
                     </p>
                   </div>
                   <Switch
@@ -278,11 +278,11 @@ const SettingsPage = () => {
 
                 <Separator />
 
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>Sound Alerts</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Play sound for incoming notifications
+                <div className="flex items-center justify-between gap-4">
+                  <div className="space-y-0.5 flex-1 min-w-0">
+                    <Label className="text-sm">Sound Alerts</Label>
+                    <p className="text-xs sm:text-sm text-muted-foreground">
+                      Play sound for notifications
                     </p>
                   </div>
                   <Switch
@@ -295,7 +295,7 @@ const SettingsPage = () => {
               </div>
 
               <div className="flex justify-end">
-                <Button onClick={handleSaveNotifications} className="gap-2">
+                <Button onClick={handleSaveNotifications} className="gap-2 w-full sm:w-auto">
                   <Save className="h-4 w-4" />
                   Save Preferences
                 </Button>
@@ -307,46 +307,46 @@ const SettingsPage = () => {
         {/* Appearance Tab */}
         <TabsContent value="appearance">
           <Card>
-            <CardHeader>
-              <CardTitle>Appearance Settings</CardTitle>
-              <CardDescription>
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg sm:text-xl">Appearance Settings</CardTitle>
+              <CardDescription className="text-sm">
                 Customize the look and feel of the application.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-4">
                 <Label>Theme</Label>
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-3 gap-2 sm:gap-4">
                   <Button
                     variant={theme === "light" ? "default" : "outline"}
-                    className="flex flex-col gap-2 h-auto py-4"
+                    className="flex flex-col gap-1 sm:gap-2 h-auto py-3 sm:py-4"
                     onClick={() => setTheme("light")}
                   >
-                    <Sun className="h-6 w-6" />
-                    <span>Light</span>
+                    <Sun className="h-5 w-5 sm:h-6 sm:w-6" />
+                    <span className="text-xs sm:text-sm">Light</span>
                   </Button>
                   <Button
                     variant={theme === "dark" ? "default" : "outline"}
-                    className="flex flex-col gap-2 h-auto py-4"
+                    className="flex flex-col gap-1 sm:gap-2 h-auto py-3 sm:py-4"
                     onClick={() => setTheme("dark")}
                   >
-                    <Moon className="h-6 w-6" />
-                    <span>Dark</span>
+                    <Moon className="h-5 w-5 sm:h-6 sm:w-6" />
+                    <span className="text-xs sm:text-sm">Dark</span>
                   </Button>
                   <Button
                     variant={theme === "system" ? "default" : "outline"}
-                    className="flex flex-col gap-2 h-auto py-4"
+                    className="flex flex-col gap-1 sm:gap-2 h-auto py-3 sm:py-4"
                     onClick={() => setTheme("system")}
                   >
-                    <Monitor className="h-6 w-6" />
-                    <span>System</span>
+                    <Monitor className="h-5 w-5 sm:h-6 sm:w-6" />
+                    <span className="text-xs sm:text-sm">System</span>
                   </Button>
                 </div>
               </div>
 
               <Separator />
 
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label>Language</Label>
                   <Select defaultValue="en">
@@ -405,9 +405,9 @@ const SettingsPage = () => {
         {/* Security Tab */}
         <TabsContent value="security">
           <Card>
-            <CardHeader>
-              <CardTitle>Security Settings</CardTitle>
-              <CardDescription>
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg sm:text-xl">Security Settings</CardTitle>
+              <CardDescription className="text-sm">
                 Manage your password and security preferences.
               </CardDescription>
             </CardHeader>
@@ -430,35 +430,35 @@ const SettingsPage = () => {
               <Separator />
 
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="space-y-0.5">
-                    <Label>Two-Factor Authentication</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Add an extra layer of security to your account
+                    <Label className="text-sm">Two-Factor Authentication</Label>
+                    <p className="text-xs sm:text-sm text-muted-foreground">
+                      Add extra security to your account
                     </p>
                   </div>
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" className="w-full sm:w-auto">
                     Enable
                   </Button>
                 </div>
 
                 <Separator />
 
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="space-y-0.5">
-                    <Label>Active Sessions</Label>
-                    <p className="text-sm text-muted-foreground">
+                    <Label className="text-sm">Active Sessions</Label>
+                    <p className="text-xs sm:text-sm text-muted-foreground">
                       Manage devices where you're logged in
                     </p>
                   </div>
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" className="w-full sm:w-auto">
                     View All
                   </Button>
                 </div>
               </div>
 
               <div className="flex justify-end">
-                <Button className="gap-2">
+                <Button className="gap-2 w-full sm:w-auto">
                   <Save className="h-4 w-4" />
                   Update Password
                 </Button>

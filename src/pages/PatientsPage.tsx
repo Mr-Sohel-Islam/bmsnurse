@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Users, UserPlus, Download, Filter } from "lucide-react";
+import { Users, UserPlus, Download } from "lucide-react";
 import { DepartmentLayout } from "@/components/department/DepartmentLayout";
 import { PatientFilters } from "@/components/filters/PatientFilters";
 import { PatientCard } from "@/components/dashboard/PatientCard";
@@ -55,17 +55,17 @@ const PatientsPage = () => {
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" className="gap-2">
             <Download className="h-4 w-4" />
-            Export
+            <span className="hidden sm:inline">Export</span>
           </Button>
           <Button size="sm" className="gap-2">
             <UserPlus className="h-4 w-4" />
-            Add Patient
+            <span className="hidden sm:inline">Add Patient</span>
           </Button>
         </div>
       }
     >
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 md:gap-4 mb-6">
         <StatsCard title="Total Patients" value={stats.total} icon={Users} variant="primary" />
         <StatsCard title="Critical" value={stats.critical} icon={AlertTriangle} variant="critical" />
         <StatsCard title="OPD" value={stats.opd} icon={Building2} variant="default" />
@@ -96,9 +96,9 @@ const PatientsPage = () => {
             />
           ))
         ) : (
-          <div className="col-span-full text-center py-12 text-muted-foreground">
-            <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p className="text-lg font-medium">No patients found</p>
+          <div className="col-span-full text-center py-8 md:py-12 text-muted-foreground">
+            <Users className="h-10 w-10 md:h-12 md:w-12 mx-auto mb-4 opacity-50" />
+            <p className="text-base md:text-lg font-medium">No patients found</p>
             <p className="text-sm">Try adjusting your filters</p>
             <Button variant="outline" className="mt-4" onClick={clearFilters}>
               Clear Filters

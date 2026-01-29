@@ -13,7 +13,7 @@ import {
   Filter,
 } from "lucide-react";
 import { DepartmentLayout } from "@/components/department/DepartmentLayout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -180,17 +180,19 @@ const TasksPage = () => {
 
     return (
       <Card className={`${task.status === "overdue" ? "border-status-critical/50" : ""}`}>
-        <CardContent className="p-4">
-          <div className="flex items-start gap-3">
+        <CardContent className="p-3 sm:p-4">
+          <div className="flex items-start gap-2 sm:gap-3">
             <Checkbox
               checked={task.status === "completed"}
               onCheckedChange={() => toggleTaskComplete(task.id)}
               className="mt-1"
             />
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
                 <TypeIcon className="h-4 w-4 text-muted-foreground shrink-0" />
-                <span className="font-medium truncate">{task.title}</span>
+                <span className="font-medium text-sm sm:text-base truncate">{task.title}</span>
+              </div>
+              <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
                 <Badge variant="outline" className={`text-xs ${priorityStyles[task.priority]}`}>
                   {task.priority}
                 </Badge>
@@ -198,8 +200,8 @@ const TasksPage = () => {
                   {statusStyle.label}
                 </Badge>
               </div>
-              <p className="text-sm text-muted-foreground mt-1">{task.description}</p>
-              <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
+              <p className="text-xs sm:text-sm text-muted-foreground mt-2 line-clamp-2">{task.description}</p>
+              <div className="flex items-center gap-2 sm:gap-4 mt-2 sm:mt-3 text-xs text-muted-foreground flex-wrap">
                 <span className="flex items-center gap-1">
                   <Clock className="h-3 w-3" />
                   {task.dueTime}
@@ -207,7 +209,7 @@ const TasksPage = () => {
                 {task.patientName && (
                   <span className="flex items-center gap-1">
                     <User className="h-3 w-3" />
-                    {task.patientName}
+                    <span className="truncate max-w-[100px]">{task.patientName}</span>
                   </span>
                 )}
                 {task.room && (
@@ -231,52 +233,52 @@ const TasksPage = () => {
       headerActions={
         <Button size="sm" className="gap-2">
           <Plus className="h-4 w-4" />
-          New Task
+          <span className="hidden sm:inline">New</span> Task
         </Button>
       }
     >
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
         <Card>
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-primary/10">
-              <ClipboardList className="h-5 w-5 text-primary" />
+          <CardContent className="p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
+            <div className="p-1.5 sm:p-2 rounded-lg bg-primary/10">
+              <ClipboardList className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{stats.total}</p>
+              <p className="text-xl sm:text-2xl font-bold">{stats.total}</p>
               <p className="text-xs text-muted-foreground">Total Tasks</p>
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-status-warning/10">
-              <Clock className="h-5 w-5 text-status-warning" />
+          <CardContent className="p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
+            <div className="p-1.5 sm:p-2 rounded-lg bg-status-warning/10">
+              <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-status-warning" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{stats.pending}</p>
+              <p className="text-xl sm:text-2xl font-bold">{stats.pending}</p>
               <p className="text-xs text-muted-foreground">Pending</p>
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-status-critical/10">
-              <AlertCircle className="h-5 w-5 text-status-critical" />
+          <CardContent className="p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
+            <div className="p-1.5 sm:p-2 rounded-lg bg-status-critical/10">
+              <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 text-status-critical" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{stats.overdue}</p>
+              <p className="text-xl sm:text-2xl font-bold">{stats.overdue}</p>
               <p className="text-xs text-muted-foreground">Overdue</p>
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-status-normal/10">
-              <CheckCircle2 className="h-5 w-5 text-status-normal" />
+          <CardContent className="p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
+            <div className="p-1.5 sm:p-2 rounded-lg bg-status-normal/10">
+              <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5 text-status-normal" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{stats.completed}</p>
+              <p className="text-xl sm:text-2xl font-bold">{stats.completed}</p>
               <p className="text-xs text-muted-foreground">Completed</p>
             </div>
           </CardContent>
@@ -284,11 +286,11 @@ const TasksPage = () => {
       </div>
 
       {/* Filters */}
-      <div className="flex items-center gap-4 mb-6">
+      <div className="flex flex-wrap items-center gap-2 sm:gap-4 mb-6">
         <div className="flex items-center gap-2">
           <Filter className="h-4 w-4 text-muted-foreground" />
           <Select value={filterType} onValueChange={setFilterType}>
-            <SelectTrigger className="w-[150px]">
+            <SelectTrigger className="w-[130px] sm:w-[150px]">
               <SelectValue placeholder="Task Type" />
             </SelectTrigger>
             <SelectContent>
@@ -302,7 +304,7 @@ const TasksPage = () => {
           </Select>
         </div>
         <Select value={filterPriority} onValueChange={setFilterPriority}>
-          <SelectTrigger className="w-[150px]">
+          <SelectTrigger className="w-[130px] sm:w-[150px]">
             <SelectValue placeholder="Priority" />
           </SelectTrigger>
           <SelectContent>
@@ -316,22 +318,22 @@ const TasksPage = () => {
 
       {/* Task Lists */}
       <Tabs defaultValue="pending" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="pending" className="gap-2">
+        <TabsList className="w-full sm:w-auto grid grid-cols-3 sm:inline-flex">
+          <TabsTrigger value="pending" className="gap-1 sm:gap-2 text-xs sm:text-sm">
             Pending
-            <Badge variant="secondary" className="ml-1">
+            <Badge variant="secondary" className="ml-1 text-xs">
               {pendingTasks.length}
             </Badge>
           </TabsTrigger>
-          <TabsTrigger value="in-progress" className="gap-2">
-            In Progress
-            <Badge variant="secondary" className="ml-1">
+          <TabsTrigger value="in-progress" className="gap-1 sm:gap-2 text-xs sm:text-sm">
+            <span className="hidden sm:inline">In </span>Progress
+            <Badge variant="secondary" className="ml-1 text-xs">
               {inProgressTasks.length}
             </Badge>
           </TabsTrigger>
-          <TabsTrigger value="completed" className="gap-2">
-            Completed
-            <Badge variant="secondary" className="ml-1">
+          <TabsTrigger value="completed" className="gap-1 sm:gap-2 text-xs sm:text-sm">
+            Done
+            <Badge variant="secondary" className="ml-1 text-xs">
               {completedTasks.length}
             </Badge>
           </TabsTrigger>
@@ -341,8 +343,8 @@ const TasksPage = () => {
           {pendingTasks.length > 0 ? (
             pendingTasks.map((task) => <TaskCard key={task.id} task={task} />)
           ) : (
-            <div className="text-center py-12 text-muted-foreground">
-              <CheckCircle2 className="h-12 w-12 mx-auto mb-4 opacity-50" />
+            <div className="text-center py-8 sm:py-12 text-muted-foreground">
+              <CheckCircle2 className="h-10 w-10 sm:h-12 sm:w-12 mx-auto mb-4 opacity-50" />
               <p>No pending tasks</p>
             </div>
           )}
@@ -352,8 +354,8 @@ const TasksPage = () => {
           {inProgressTasks.length > 0 ? (
             inProgressTasks.map((task) => <TaskCard key={task.id} task={task} />)
           ) : (
-            <div className="text-center py-12 text-muted-foreground">
-              <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
+            <div className="text-center py-8 sm:py-12 text-muted-foreground">
+              <Clock className="h-10 w-10 sm:h-12 sm:w-12 mx-auto mb-4 opacity-50" />
               <p>No tasks in progress</p>
             </div>
           )}
@@ -363,8 +365,8 @@ const TasksPage = () => {
           {completedTasks.length > 0 ? (
             completedTasks.map((task) => <TaskCard key={task.id} task={task} />)
           ) : (
-            <div className="text-center py-12 text-muted-foreground">
-              <ClipboardList className="h-12 w-12 mx-auto mb-4 opacity-50" />
+            <div className="text-center py-8 sm:py-12 text-muted-foreground">
+              <ClipboardList className="h-10 w-10 sm:h-12 sm:w-12 mx-auto mb-4 opacity-50" />
               <p>No completed tasks</p>
             </div>
           )}

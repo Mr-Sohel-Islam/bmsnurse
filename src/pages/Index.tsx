@@ -16,11 +16,14 @@ import { QuickActionsCard } from "@/components/dashboard/QuickActionsCard";
 import { AlertsPanel } from "@/components/dashboard/AlertsPanel";
 import { PatientDetailModal } from "@/components/modals/PatientDetailModal";
 import { mockPatients, type Patient } from "@/data/mockPatients";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { cn } from "@/lib/utils";
 
 const Index = () => {
   const [sidebarCollapsed] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const isMobile = useIsMobile();
 
   const handleViewPatient = (patient: Patient) => {
     setSelectedPatient(patient);
@@ -42,20 +45,21 @@ const Index = () => {
       <TopHeader sidebarCollapsed={sidebarCollapsed} />
 
       <main
-        className={`transition-all duration-300 pt-20 pb-8 px-6 ${
-          sidebarCollapsed ? "ml-20" : "ml-64"
-        }`}
+        className={cn(
+          "transition-all duration-300 pt-20 pb-8 px-4 md:px-6",
+          isMobile ? "ml-0" : sidebarCollapsed ? "ml-20" : "ml-64"
+        )}
       >
         {/* Page Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold">Dashboard</h1>
-          <p className="text-muted-foreground">
+        <div className="mb-6 md:mb-8">
+          <h1 className="text-2xl md:text-3xl font-bold">Dashboard</h1>
+          <p className="text-sm md:text-base text-muted-foreground">
             Welcome back, Sarah. Here's your patient overview for today.
           </p>
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4 mb-8">
+        {/* Stats Grid - 2 cols on mobile, scales up on larger screens */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3 md:gap-4 mb-6 md:mb-8">
           <StatsCard
             title="Total Patients"
             value={stats.totalPatients}
@@ -95,9 +99,9 @@ const Index = () => {
         </div>
 
         {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
           {/* Left Column - Patients by Department */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-2 space-y-4 md:space-y-6">
             <QuickActionsCard />
             <DepartmentTabs 
               patients={mockPatients} 
@@ -106,7 +110,7 @@ const Index = () => {
           </div>
 
           {/* Right Column - Sidebar Widgets */}
-          <div className="space-y-6">
+          <div className="space-y-4 md:space-y-6">
             <AlertsPanel />
             <BedOccupancyCard />
           </div>
