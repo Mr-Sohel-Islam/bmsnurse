@@ -9,10 +9,9 @@ import {
   Filter,
   Volume2,
   VolumeX,
-  Trash2,
 } from "lucide-react";
 import { DepartmentLayout } from "@/components/department/DepartmentLayout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -201,42 +200,42 @@ const AlertsPage = () => {
           alert.type === "critical" && !alert.acknowledged ? "animate-pulse" : ""
         }`}
       >
-        <CardContent className="p-4">
-          <div className="flex items-start gap-3">
-            <div className={`p-2 rounded-full ${style.iconBg} text-white shrink-0`}>
-              <Icon className="h-4 w-4" />
+        <CardContent className="p-3 sm:p-4">
+          <div className="flex items-start gap-2 sm:gap-3">
+            <div className={`p-1.5 sm:p-2 rounded-full ${style.iconBg} text-white shrink-0`}>
+              <Icon className="h-3 w-3 sm:h-4 sm:w-4" />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-medium">{alert.title}</span>
-                <Badge className={style.badge}>{alert.type}</Badge>
-                <Badge variant="outline" className="text-xs">
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                <span className="font-medium text-sm sm:text-base">{alert.title}</span>
+                <Badge className={`${style.badge} text-xs`}>{alert.type}</Badge>
+                <Badge variant="outline" className="text-xs hidden sm:inline-flex">
                   {alert.category}
                 </Badge>
               </div>
-              <p className="text-sm text-muted-foreground mt-1">{alert.description}</p>
-              <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+              <p className="text-xs sm:text-sm text-muted-foreground mt-1 line-clamp-2">{alert.description}</p>
+              <div className="flex items-center gap-2 sm:gap-4 mt-2 text-xs text-muted-foreground flex-wrap">
                 <span>{alert.time}</span>
-                {alert.patientName && <span>Patient: {alert.patientName}</span>}
-                {alert.room && <span>Room: {alert.room}</span>}
+                {alert.patientName && <span className="truncate max-w-[100px]">{alert.patientName}</span>}
+                {alert.room && <span>{alert.room}</span>}
               </div>
             </div>
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-1 sm:gap-2 shrink-0">
               {!alert.acknowledged && (
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => acknowledgeAlert(alert.id)}
-                  className="gap-1"
+                  className="gap-1 text-xs px-2 sm:px-3"
                 >
                   <CheckCircle2 className="h-3 w-3" />
-                  Acknowledge
+                  <span className="hidden sm:inline">Acknowledge</span>
                 </Button>
               )}
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                className="h-7 w-7 sm:h-8 sm:w-8 text-muted-foreground hover:text-destructive"
                 onClick={() => dismissAlert(alert.id)}
               >
                 <X className="h-4 w-4" />
@@ -253,64 +252,64 @@ const AlertsPage = () => {
       title="Alerts"
       icon={Bell}
       headerActions={
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
           <div className="flex items-center gap-2">
             <Switch id="sound" checked={soundEnabled} onCheckedChange={setSoundEnabled} />
             <Label htmlFor="sound" className="flex items-center gap-1 text-sm">
               {soundEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
-              Sound
+              <span className="hidden sm:inline">Sound</span>
             </Label>
           </div>
           {unacknowledged.length > 0 && (
-            <Button variant="outline" size="sm" onClick={acknowledgeAll}>
-              Acknowledge All ({unacknowledged.length})
+            <Button variant="outline" size="sm" onClick={acknowledgeAll} className="text-xs sm:text-sm">
+              Ack All ({unacknowledged.length})
             </Button>
           )}
         </div>
       }
     >
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
         <Card>
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-primary/10">
-              <Bell className="h-5 w-5 text-primary" />
+          <CardContent className="p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
+            <div className="p-1.5 sm:p-2 rounded-lg bg-primary/10">
+              <Bell className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{stats.total}</p>
-              <p className="text-xs text-muted-foreground">Total Alerts</p>
+              <p className="text-xl sm:text-2xl font-bold">{stats.total}</p>
+              <p className="text-xs text-muted-foreground">Total</p>
             </div>
           </CardContent>
         </Card>
         <Card className={stats.critical > 0 ? "border-status-critical/50" : ""}>
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-status-critical/10">
-              <AlertTriangle className="h-5 w-5 text-status-critical" />
+          <CardContent className="p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
+            <div className="p-1.5 sm:p-2 rounded-lg bg-status-critical/10">
+              <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 text-status-critical" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{stats.critical}</p>
+              <p className="text-xl sm:text-2xl font-bold">{stats.critical}</p>
               <p className="text-xs text-muted-foreground">Critical</p>
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-status-warning/10">
-              <Clock className="h-5 w-5 text-status-warning" />
+          <CardContent className="p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
+            <div className="p-1.5 sm:p-2 rounded-lg bg-status-warning/10">
+              <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-status-warning" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{stats.warning}</p>
+              <p className="text-xl sm:text-2xl font-bold">{stats.warning}</p>
               <p className="text-xs text-muted-foreground">Warnings</p>
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-status-normal/10">
-              <Info className="h-5 w-5 text-status-normal" />
+          <CardContent className="p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
+            <div className="p-1.5 sm:p-2 rounded-lg bg-status-normal/10">
+              <Info className="h-4 w-4 sm:h-5 sm:w-5 text-status-normal" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{stats.info}</p>
+              <p className="text-xl sm:text-2xl font-bold">{stats.info}</p>
               <p className="text-xs text-muted-foreground">Info</p>
             </div>
           </CardContent>
@@ -318,11 +317,11 @@ const AlertsPage = () => {
       </div>
 
       {/* Filters */}
-      <div className="flex items-center gap-4 mb-6">
+      <div className="flex flex-wrap items-center gap-2 sm:gap-4 mb-6">
         <div className="flex items-center gap-2">
           <Filter className="h-4 w-4 text-muted-foreground" />
           <Select value={filterType} onValueChange={setFilterType}>
-            <SelectTrigger className="w-[150px]">
+            <SelectTrigger className="w-[120px] sm:w-[150px]">
               <SelectValue placeholder="Alert Type" />
             </SelectTrigger>
             <SelectContent>
@@ -334,7 +333,7 @@ const AlertsPage = () => {
           </Select>
         </div>
         <Select value={filterCategory} onValueChange={setFilterCategory}>
-          <SelectTrigger className="w-[150px]">
+          <SelectTrigger className="w-[120px] sm:w-[150px]">
             <SelectValue placeholder="Category" />
           </SelectTrigger>
           <SelectContent>
@@ -350,18 +349,18 @@ const AlertsPage = () => {
 
       {/* Alert Lists */}
       <Tabs defaultValue="active" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="active" className="gap-2">
+        <TabsList className="w-full sm:w-auto grid grid-cols-2 sm:inline-flex">
+          <TabsTrigger value="active" className="gap-1 sm:gap-2">
             Active
             {unacknowledged.length > 0 && (
-              <Badge variant="destructive" className="ml-1">
+              <Badge variant="destructive" className="ml-1 text-xs">
                 {unacknowledged.length}
               </Badge>
             )}
           </TabsTrigger>
-          <TabsTrigger value="acknowledged" className="gap-2">
+          <TabsTrigger value="acknowledged" className="gap-1 sm:gap-2">
             Acknowledged
-            <Badge variant="secondary" className="ml-1">
+            <Badge variant="secondary" className="ml-1 text-xs">
               {acknowledged.length}
             </Badge>
           </TabsTrigger>
@@ -371,9 +370,9 @@ const AlertsPage = () => {
           {unacknowledged.length > 0 ? (
             unacknowledged.map((alert) => <AlertCard key={alert.id} alert={alert} />)
           ) : (
-            <div className="text-center py-12 text-muted-foreground">
-              <CheckCircle2 className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p className="text-lg font-medium">All clear!</p>
+            <div className="text-center py-8 sm:py-12 text-muted-foreground">
+              <CheckCircle2 className="h-10 w-10 sm:h-12 sm:w-12 mx-auto mb-4 opacity-50" />
+              <p className="text-base sm:text-lg font-medium">All clear!</p>
               <p className="text-sm">No active alerts at the moment</p>
             </div>
           )}
@@ -383,8 +382,8 @@ const AlertsPage = () => {
           {acknowledged.length > 0 ? (
             acknowledged.map((alert) => <AlertCard key={alert.id} alert={alert} />)
           ) : (
-            <div className="text-center py-12 text-muted-foreground">
-              <Bell className="h-12 w-12 mx-auto mb-4 opacity-50" />
+            <div className="text-center py-8 sm:py-12 text-muted-foreground">
+              <Bell className="h-10 w-10 sm:h-12 sm:w-12 mx-auto mb-4 opacity-50" />
               <p>No acknowledged alerts</p>
             </div>
           )}

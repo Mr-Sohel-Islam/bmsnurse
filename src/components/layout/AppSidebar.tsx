@@ -13,10 +13,14 @@ import {
   ChevronLeft,
   ChevronRight,
   Stethoscope,
+  Menu,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/" },
@@ -33,17 +37,17 @@ const bottomMenuItems = [
   { icon: LogOut, label: "Logout", path: "/logout" },
 ];
 
-export function AppSidebar() {
-  const [collapsed, setCollapsed] = useState(false);
+interface SidebarContentProps {
+  collapsed: boolean;
+  onCollapse?: () => void;
+  onNavigate?: () => void;
+}
+
+function SidebarContent({ collapsed, onCollapse, onNavigate }: SidebarContentProps) {
   const location = useLocation();
 
   return (
-    <aside
-      className={cn(
-        "fixed left-0 top-0 z-40 h-screen bg-sidebar transition-all duration-300 flex flex-col",
-        collapsed ? "w-20" : "w-64"
-      )}
-    >
+    <>
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-sidebar-border">
         <div className={cn("flex items-center gap-3", collapsed && "justify-center w-full")}>
@@ -57,21 +61,23 @@ export function AppSidebar() {
             </div>
           )}
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setCollapsed(!collapsed)}
-          className={cn(
-            "text-sidebar-foreground hover:bg-sidebar-accent",
-            collapsed && "absolute -right-3 top-6 bg-sidebar border border-sidebar-border rounded-full w-6 h-6 p-0"
-          )}
-        >
-          {collapsed ? (
-            <ChevronRight className="h-4 w-4" />
-          ) : (
-            <ChevronLeft className="h-4 w-4" />
-          )}
-        </Button>
+        {onCollapse && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onCollapse}
+            className={cn(
+              "text-sidebar-foreground hover:bg-sidebar-accent",
+              collapsed && "absolute -right-3 top-6 bg-sidebar border border-sidebar-border rounded-full w-6 h-6 p-0"
+            )}
+          >
+            {collapsed ? (
+              <ChevronRight className="h-4 w-4" />
+            ) : (
+              <ChevronLeft className="h-4 w-4" />
+            )}
+          </Button>
+        )}
       </div>
 
       {/* Navigation */}
@@ -82,8 +88,9 @@ export function AppSidebar() {
             <NavLink
               key={item.path}
               to={item.path}
+              onClick={onNavigate}
               className={cn(
-                "flex items-center gap-3 px-3 py-3 rounded-xl transition-all",
+                "flex items-center gap-3 px-3 py-3 rounded-xl transition-all relative",
                 "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent",
                 isActive && "bg-sidebar-primary text-sidebar-primary-foreground",
                 collapsed && "justify-center"
@@ -125,6 +132,7 @@ export function AppSidebar() {
           <NavLink
             key={item.path}
             to={item.path}
+            onClick={onNavigate}
             className={cn(
               "flex items-center gap-3 px-3 py-3 rounded-xl transition-all",
               "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent",
@@ -144,13 +152,64 @@ export function AppSidebar() {
             <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
               <span className="text-sm font-semibold text-primary">SJ</span>
             </div>
-            <div className="flex-1">
-              <p className="text-sm font-medium text-sidebar-foreground">Sarah Johnson</p>
-              <p className="text-xs text-sidebar-foreground/60">Head Nurse • IPD</p>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-sidebar-foreground truncate">Sarah Johnson</p>
+              <p className="text-xs text-sidebar-foreground/60 truncate">Head Nurse • IPD</p>
             </div>
           </div>
         </div>
       )}
+    </>
+  );
+}
+
+export function AppSidebar() {
+  const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const isMobile = useIsMobile();
+
+  // Mobile: Sheet drawer
+  if (isMobile) {
+    return (
+      <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+        <SheetTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="fixed top-4 left-4 z-50 bg-card shadow-md border"
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
+        </SheetTrigger>
+        <SheetContent side="left" className="p-0 w-72 bg-sidebar border-sidebar-border">
+          <div className="h-full flex flex-col">
+            <SidebarContent 
+              collapsed={false} 
+              onNavigate={() => setMobileOpen(false)} 
+            />
+          </div>
+        </SheetContent>
+      </Sheet>
+    );
+  }
+
+  // Desktop: Fixed sidebar
+  return (
+    <aside
+      className={cn(
+        "fixed left-0 top-0 z-40 h-screen bg-sidebar transition-all duration-300 flex flex-col",
+        collapsed ? "w-20" : "w-64"
+      )}
+    >
+      <SidebarContent 
+        collapsed={collapsed} 
+        onCollapse={() => setCollapsed(!collapsed)} 
+      />
     </aside>
   );
+}
+
+export function useSidebarState() {
+  const isMobile = useIsMobile();
+  return { isMobile, sidebarWidth: isMobile ? 0 : 256 };
 }
