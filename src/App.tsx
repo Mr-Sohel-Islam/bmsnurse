@@ -11,6 +11,9 @@ import PatientsPage from "./pages/PatientsPage";
 import TasksPage from "./pages/TasksPage";
 import AlertsPage from "./pages/AlertsPage";
 import SettingsPage from "./pages/SettingsPage";
+import LoginPage from "./pages/LoginPage";
+import NurseSchedulePage from "./pages/NurseSchedulePage";
+import AdminMasterPage from "./pages/AdminMasterPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -23,6 +26,7 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
+          <Route path="/login" element={<LoginPage />} />
           <Route path="/opd" element={<OPDPage />} />
           <Route path="/ipd" element={<IPDPage />} />
           <Route path="/emergency" element={<EmergencyPage />} />
@@ -30,6 +34,8 @@ const App = () => (
           <Route path="/tasks" element={<TasksPage />} />
           <Route path="/alerts" element={<AlertsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/schedule" element={<NurseSchedulePage />} />
+          <Route path="/admin" element={<AdminMasterPage />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
