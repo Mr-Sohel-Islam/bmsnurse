@@ -1,0 +1,10 @@
+export { authService } from './auth.service';
+export { patientService } from './patient.service';
+export { vitalService } from './vital.service';
+export { taskService } from './task.service';
+export { alertService } from './alert.service';
+export { bedService } from './bed.service';
+export { scheduleService } from './schedule.service';
+export { medicationService } from './medication.service';
+export { staffService } from './staff.service';
+export { activityService } from './activity.service';
