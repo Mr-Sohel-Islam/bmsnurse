@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   Bell,
   AlertTriangle,
@@ -9,6 +9,7 @@ import {
   Filter,
   Volume2,
   VolumeX,
+  Loader2,
 } from "lucide-react";
 import { DepartmentLayout } from "@/components/department/DepartmentLayout";
 import { Card, CardContent } from "@/components/ui/card";
@@ -24,111 +25,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useMyAlerts, useAcknowledgeAlert, useDismissAlert, useAlertCounts } from "@/hooks/useAlerts";
+import type { Alert as ApiAlert } from "@/types/api";
+import { formatDistanceToNow } from "date-fns";
 
-interface Alert {
-  id: string;
-  type: "critical" | "warning" | "info";
-  title: string;
-  description: string;
-  time: string;
-  timestamp: Date;
-  patientId?: string;
-  patientName?: string;
-  room?: string;
-  acknowledged: boolean;
-  category: "vitals" | "medication" | "system" | "admission" | "discharge";
-}
-
-const mockAlerts: Alert[] = [
-  {
-    id: "A001",
-    type: "critical",
-    title: "Critical Vital Signs",
-    description: "SpO2 dropped to 89% - requires immediate attention",
-    time: "2 min ago",
-    timestamp: new Date(Date.now() - 2 * 60000),
-    patientId: "P001",
-    patientName: "John Smith",
-    room: "ICU-01",
-    acknowledged: false,
-    category: "vitals",
-  },
-  {
-    id: "A002",
-    type: "critical",
-    title: "Cardiac Arrhythmia Detected",
-    description: "Irregular heart rhythm detected - ECG review needed",
-    time: "5 min ago",
-    timestamp: new Date(Date.now() - 5 * 60000),
-    patientId: "P002",
-    patientName: "Maria Garcia",
-    room: "ICU-02",
-    acknowledged: false,
-    category: "vitals",
-  },
-  {
-    id: "A003",
-    type: "warning",
-    title: "Medication Overdue",
-    description: "Insulin administration is 30 minutes overdue",
-    time: "8 min ago",
-    timestamp: new Date(Date.now() - 8 * 60000),
-    patientId: "P005",
-    patientName: "James Wilson",
-    room: "IPD-201",
-    acknowledged: false,
-    category: "medication",
-  },
-  {
-    id: "A004",
-    type: "warning",
-    title: "High Temperature Alert",
-    description: "Temperature reading 39.2°C - fever protocol recommended",
-    time: "15 min ago",
-    timestamp: new Date(Date.now() - 15 * 60000),
-    patientId: "P004",
-    patientName: "Emily Brown",
-    room: "IPD-108",
-    acknowledged: true,
-    category: "vitals",
-  },
-  {
-    id: "A005",
-    type: "info",
-    title: "New Emergency Admission",
-    description: "Patient admitted to ER-3 with chest pain",
-    time: "20 min ago",
-    timestamp: new Date(Date.now() - 20 * 60000),
-    patientId: "P003",
-    patientName: "Alex Thompson",
-    room: "ER-3",
-    acknowledged: true,
-    category: "admission",
-  },
-  {
-    id: "A006",
-    type: "info",
-    title: "Shift Change Reminder",
-    description: "Evening shift starts in 30 minutes",
-    time: "25 min ago",
-    timestamp: new Date(Date.now() - 25 * 60000),
-    acknowledged: true,
-    category: "system",
-  },
-  {
-    id: "A007",
-    type: "info",
-    title: "Discharge Ready",
-    description: "Patient cleared for discharge - documentation pending",
-    time: "45 min ago",
-    timestamp: new Date(Date.now() - 45 * 60000),
-    patientId: "P006",
-    patientName: "Robert Chen",
-    room: "IPD-105",
-    acknowledged: true,
-    category: "discharge",
-  },
-];
+const severityToType = (severity: string) => {
+  if (severity === 'critical' || severity === 'high') return 'critical';
+  if (severity === 'medium') return 'warning';
+  return 'info';
+};
 
 const alertStyles = {
   critical: {
@@ -155,49 +60,52 @@ const alertStyles = {
 };
 
 const AlertsPage = () => {
-  const [alerts, setAlerts] = useState<Alert[]>(mockAlerts);
   const [filterType, setFilterType] = useState("all");
   const [filterCategory, setFilterCategory] = useState("all");
   const [soundEnabled, setSoundEnabled] = useState(true);
 
-  const filteredAlerts = alerts.filter((alert) => {
-    const matchesType = filterType === "all" || alert.type === filterType;
-    const matchesCategory = filterCategory === "all" || alert.category === filterCategory;
-    return matchesType && matchesCategory;
-  });
+  const { data: alerts = [], isLoading } = useMyAlerts();
+  const { data: alertCounts } = useAlertCounts();
+  const acknowledgeAlert = useAcknowledgeAlert();
+  const dismissAlert = useDismissAlert();
 
-  const unacknowledged = filteredAlerts.filter((a) => !a.acknowledged);
-  const acknowledged = filteredAlerts.filter((a) => a.acknowledged);
+  const filteredAlerts = useMemo(() => {
+    return alerts.filter((alert) => {
+      const displayType = severityToType(alert.severity);
+      const matchesType = filterType === "all" || displayType === filterType;
+      const matchesCategory = filterCategory === "all" || alert.type === filterCategory;
+      return matchesType && matchesCategory;
+    });
+  }, [alerts, filterType, filterCategory]);
 
-  const acknowledgeAlert = (alertId: string) => {
-    setAlerts((prev) =>
-      prev.map((alert) => (alert.id === alertId ? { ...alert, acknowledged: true } : alert))
-    );
+  const unacknowledged = filteredAlerts.filter((a) => !a.isAcknowledged);
+  const acknowledged = filteredAlerts.filter((a) => a.isAcknowledged);
+
+  const handleAcknowledge = (alertId: string) => {
+    acknowledgeAlert.mutate(alertId);
   };
 
-  const dismissAlert = (alertId: string) => {
-    setAlerts((prev) => prev.filter((alert) => alert.id !== alertId));
-  };
-
-  const acknowledgeAll = () => {
-    setAlerts((prev) => prev.map((alert) => ({ ...alert, acknowledged: true })));
+  const handleDismiss = (alertId: string) => {
+    dismissAlert.mutate(alertId);
   };
 
   const stats = {
-    total: alerts.length,
-    critical: alerts.filter((a) => a.type === "critical" && !a.acknowledged).length,
-    warning: alerts.filter((a) => a.type === "warning" && !a.acknowledged).length,
-    info: alerts.filter((a) => a.type === "info" && !a.acknowledged).length,
+    total: alertCounts?.total ?? alerts.length,
+    critical: alertCounts?.critical ?? alerts.filter((a) => a.severity === "critical").length,
+    warning: alertCounts?.bySeverity?.medium ?? alerts.filter((a) => a.severity === "medium").length,
+    info: alertCounts?.bySeverity?.low ?? alerts.filter((a) => a.severity === "low").length,
   };
 
-  const AlertCard = ({ alert }: { alert: Alert }) => {
-    const style = alertStyles[alert.type];
+  const AlertCard = ({ alert }: { alert: ApiAlert }) => {
+    const displayType = severityToType(alert.severity);
+    const style = alertStyles[displayType];
     const Icon = style.icon;
+    const patientName = typeof alert.patient === 'object' && alert.patient ? (alert.patient as any).name : undefined;
 
     return (
       <Card
-        className={`${style.border} border-l-4 ${!alert.acknowledged ? style.bg : ""} ${
-          alert.type === "critical" && !alert.acknowledged ? "animate-pulse" : ""
+        className={`${style.border} border-l-4 ${!alert.isAcknowledged ? style.bg : ""} ${
+          displayType === "critical" && !alert.isAcknowledged ? "animate-pulse" : ""
         }`}
       >
         <CardContent className="p-3 sm:p-4">
@@ -208,25 +116,25 @@ const AlertsPage = () => {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
                 <span className="font-medium text-sm sm:text-base">{alert.title}</span>
-                <Badge className={`${style.badge} text-xs`}>{alert.type}</Badge>
+                <Badge className={`${style.badge} text-xs`}>{alert.severity}</Badge>
                 <Badge variant="outline" className="text-xs hidden sm:inline-flex">
-                  {alert.category}
+                  {alert.type.replace('_', ' ')}
                 </Badge>
               </div>
-              <p className="text-xs sm:text-sm text-muted-foreground mt-1 line-clamp-2">{alert.description}</p>
+              <p className="text-xs sm:text-sm text-muted-foreground mt-1 line-clamp-2">{alert.message}</p>
               <div className="flex items-center gap-2 sm:gap-4 mt-2 text-xs text-muted-foreground flex-wrap">
-                <span>{alert.time}</span>
-                {alert.patientName && <span className="truncate max-w-[100px]">{alert.patientName}</span>}
-                {alert.room && <span>{alert.room}</span>}
+                <span>{formatDistanceToNow(new Date(alert.createdAt), { addSuffix: true })}</span>
+                {patientName && <span className="truncate max-w-[100px]">{patientName}</span>}
               </div>
             </div>
             <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-              {!alert.acknowledged && (
+              {!alert.isAcknowledged && (
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => acknowledgeAlert(alert.id)}
+                  onClick={() => handleAcknowledge(alert._id)}
                   className="gap-1 text-xs px-2 sm:px-3"
+                  disabled={acknowledgeAlert.isPending}
                 >
                   <CheckCircle2 className="h-3 w-3" />
                   <span className="hidden sm:inline">Acknowledge</span>
@@ -236,7 +144,8 @@ const AlertsPage = () => {
                 variant="ghost"
                 size="icon"
                 className="h-7 w-7 sm:h-8 sm:w-8 text-muted-foreground hover:text-destructive"
-                onClick={() => dismissAlert(alert.id)}
+                onClick={() => handleDismiss(alert._id)}
+                disabled={dismissAlert.isPending}
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -260,11 +169,6 @@ const AlertsPage = () => {
               <span className="hidden sm:inline">Sound</span>
             </Label>
           </div>
-          {unacknowledged.length > 0 && (
-            <Button variant="outline" size="sm" onClick={acknowledgeAll} className="text-xs sm:text-sm">
-              Ack All ({unacknowledged.length})
-            </Button>
-          )}
         </div>
       }
     >
@@ -338,57 +242,63 @@ const AlertsPage = () => {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Categories</SelectItem>
-            <SelectItem value="vitals">Vitals</SelectItem>
-            <SelectItem value="medication">Medication</SelectItem>
-            <SelectItem value="admission">Admission</SelectItem>
-            <SelectItem value="discharge">Discharge</SelectItem>
+            <SelectItem value="vital_abnormal">Vitals</SelectItem>
+            <SelectItem value="medication_due">Medication</SelectItem>
+            <SelectItem value="patient_critical">Patient Critical</SelectItem>
+            <SelectItem value="task_overdue">Task Overdue</SelectItem>
             <SelectItem value="system">System</SelectItem>
+            <SelectItem value="custom">Custom</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
-      {/* Alert Lists */}
-      <Tabs defaultValue="active" className="space-y-4">
-        <TabsList className="w-full sm:w-auto grid grid-cols-2 sm:inline-flex">
-          <TabsTrigger value="active" className="gap-1 sm:gap-2">
-            Active
-            {unacknowledged.length > 0 && (
-              <Badge variant="destructive" className="ml-1 text-xs">
-                {unacknowledged.length}
+      {isLoading ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      ) : (
+        <Tabs defaultValue="active" className="space-y-4">
+          <TabsList className="w-full sm:w-auto grid grid-cols-2 sm:inline-flex">
+            <TabsTrigger value="active" className="gap-1 sm:gap-2">
+              Active
+              {unacknowledged.length > 0 && (
+                <Badge variant="destructive" className="ml-1 text-xs">
+                  {unacknowledged.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="acknowledged" className="gap-1 sm:gap-2">
+              Acknowledged
+              <Badge variant="secondary" className="ml-1 text-xs">
+                {acknowledged.length}
               </Badge>
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="active" className="space-y-3">
+            {unacknowledged.length > 0 ? (
+              unacknowledged.map((alert) => <AlertCard key={alert._id} alert={alert} />)
+            ) : (
+              <div className="text-center py-8 sm:py-12 text-muted-foreground">
+                <CheckCircle2 className="h-10 w-10 sm:h-12 sm:w-12 mx-auto mb-4 opacity-50" />
+                <p className="text-base sm:text-lg font-medium">All clear!</p>
+                <p className="text-sm">No active alerts at the moment</p>
+              </div>
             )}
-          </TabsTrigger>
-          <TabsTrigger value="acknowledged" className="gap-1 sm:gap-2">
-            Acknowledged
-            <Badge variant="secondary" className="ml-1 text-xs">
-              {acknowledged.length}
-            </Badge>
-          </TabsTrigger>
-        </TabsList>
+          </TabsContent>
 
-        <TabsContent value="active" className="space-y-3">
-          {unacknowledged.length > 0 ? (
-            unacknowledged.map((alert) => <AlertCard key={alert.id} alert={alert} />)
-          ) : (
-            <div className="text-center py-8 sm:py-12 text-muted-foreground">
-              <CheckCircle2 className="h-10 w-10 sm:h-12 sm:w-12 mx-auto mb-4 opacity-50" />
-              <p className="text-base sm:text-lg font-medium">All clear!</p>
-              <p className="text-sm">No active alerts at the moment</p>
-            </div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="acknowledged" className="space-y-3">
-          {acknowledged.length > 0 ? (
-            acknowledged.map((alert) => <AlertCard key={alert.id} alert={alert} />)
-          ) : (
-            <div className="text-center py-8 sm:py-12 text-muted-foreground">
-              <Bell className="h-10 w-10 sm:h-12 sm:w-12 mx-auto mb-4 opacity-50" />
-              <p>No acknowledged alerts</p>
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
+          <TabsContent value="acknowledged" className="space-y-3">
+            {acknowledged.length > 0 ? (
+              acknowledged.map((alert) => <AlertCard key={alert._id} alert={alert} />)
+            ) : (
+              <div className="text-center py-8 sm:py-12 text-muted-foreground">
+                <Bell className="h-10 w-10 sm:h-12 sm:w-12 mx-auto mb-4 opacity-50" />
+                <p>No acknowledged alerts</p>
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
+      )}
     </DepartmentLayout>
   );
 };
