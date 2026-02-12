@@ -1,11 +1,13 @@
 import { useState, useMemo } from "react";
-import { Users, UserPlus, Download } from "lucide-react";
+import { Users, UserPlus, Download, Loader2 } from "lucide-react";
 import { DepartmentLayout } from "@/components/department/DepartmentLayout";
 import { PatientFilters } from "@/components/filters/PatientFilters";
 import { PatientCard } from "@/components/dashboard/PatientCard";
 import { PatientDetailModal } from "@/components/modals/PatientDetailModal";
 import { Button } from "@/components/ui/button";
-import { mockPatients, nursesList, type Patient } from "@/data/mockPatients";
+import { usePatients, usePatientStats } from "@/hooks/usePatients";
+import { mapApiPatientToUI } from "@/utils/patientMapper";
+import { nursesList, type Patient } from "@/data/mockPatients";
 import { StatsCard } from "@/components/dashboard/StatsCard";
 import { Bed, AlertTriangle, Activity, Building2 } from "lucide-react";
 
@@ -16,9 +18,21 @@ const PatientsPage = () => {
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
 
+  const { data: patientsResponse, isLoading } = usePatients({
+    search: searchQuery || undefined,
+    status: statusFilter !== "all" ? statusFilter : undefined,
+    limit: 100,
+  });
+  const { data: patientStats } = usePatientStats();
+
+  const allPatients = useMemo(() => {
+    return (patientsResponse?.data || []).map((p) => mapApiPatientToUI(p));
+  }, [patientsResponse]);
+
   const filteredPatients = useMemo(() => {
-    return mockPatients.filter((patient) => {
+    return allPatients.filter((patient) => {
       const matchesSearch =
+        !searchQuery ||
         patient.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         patient.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
         patient.diagnosis.toLowerCase().includes(searchQuery.toLowerCase());
@@ -26,7 +40,7 @@ const PatientsPage = () => {
       const matchesNurse = nurseFilter === "all" || patient.attendingNurse === nurseFilter;
       return matchesSearch && matchesStatus && matchesNurse;
     });
-  }, [searchQuery, statusFilter, nurseFilter]);
+  }, [allPatients, searchQuery, statusFilter, nurseFilter]);
 
   const handleViewPatient = (patient: Patient) => {
     setSelectedPatient(patient);
@@ -40,11 +54,11 @@ const PatientsPage = () => {
   };
 
   const stats = {
-    total: mockPatients.length,
-    critical: mockPatients.filter((p) => p.status === "critical").length,
-    opd: mockPatients.filter((p) => p.department === "OPD").length,
-    ipd: mockPatients.filter((p) => p.department === "IPD").length,
-    emergency: mockPatients.filter((p) => p.department === "Emergency").length,
+    total: patientStats?.total ?? allPatients.length,
+    critical: patientStats?.critical ?? allPatients.filter((p) => p.status === "critical").length,
+    opd: patientStats?.byDepartment?.OPD ?? allPatients.filter((p) => p.department === "OPD").length,
+    ipd: patientStats?.byDepartment?.IPD ?? allPatients.filter((p) => p.department === "IPD").length,
+    emergency: patientStats?.byDepartment?.Emergency ?? allPatients.filter((p) => p.department === "Emergency").length,
   };
 
   return (
@@ -86,26 +100,32 @@ const PatientsPage = () => {
       />
 
       {/* Patient List */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 mt-6">
-        {filteredPatients.length > 0 ? (
-          filteredPatients.map((patient) => (
-            <PatientCard
-              key={patient.id}
-              patient={patient}
-              onViewDetails={handleViewPatient}
-            />
-          ))
-        ) : (
-          <div className="col-span-full text-center py-8 md:py-12 text-muted-foreground">
-            <Users className="h-10 w-10 md:h-12 md:w-12 mx-auto mb-4 opacity-50" />
-            <p className="text-base md:text-lg font-medium">No patients found</p>
-            <p className="text-sm">Try adjusting your filters</p>
-            <Button variant="outline" className="mt-4" onClick={clearFilters}>
-              Clear Filters
-            </Button>
-          </div>
-        )}
-      </div>
+      {isLoading ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 mt-6">
+          {filteredPatients.length > 0 ? (
+            filteredPatients.map((patient) => (
+              <PatientCard
+                key={patient.id}
+                patient={patient}
+                onViewDetails={handleViewPatient}
+              />
+            ))
+          ) : (
+            <div className="col-span-full text-center py-8 md:py-12 text-muted-foreground">
+              <Users className="h-10 w-10 md:h-12 md:w-12 mx-auto mb-4 opacity-50" />
+              <p className="text-base md:text-lg font-medium">No patients found</p>
+              <p className="text-sm">Try adjusting your filters</p>
+              <Button variant="outline" className="mt-4" onClick={clearFilters}>
+                Clear Filters
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
 
       <PatientDetailModal
         patient={selectedPatient}
