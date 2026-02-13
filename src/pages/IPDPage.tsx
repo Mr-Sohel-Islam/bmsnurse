@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Bed, Users, AlertTriangle, LogOut, Plus } from "lucide-react";
+import { Bed, Users, AlertTriangle, LogOut, Plus, Loader2 } from "lucide-react";
 import { DepartmentLayout } from "@/components/department/DepartmentLayout";
 import { PatientFilters } from "@/components/filters/PatientFilters";
 import { PatientCard } from "@/components/dashboard/PatientCard";
@@ -8,7 +8,9 @@ import { DischargePanel } from "@/components/ipd/DischargePanel";
 import { PatientDetailModal } from "@/components/modals/PatientDetailModal";
 import { StatsCard } from "@/components/dashboard/StatsCard";
 import { Button } from "@/components/ui/button";
-import { mockPatients, type Patient, type PatientStatus } from "@/data/mockPatients";
+import { usePatients } from "@/hooks/usePatients";
+import { mapApiPatientToUI } from "@/utils/patientMapper";
+import type { Patient, PatientStatus } from "@/data/mockPatients";
 
 const IPDPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -17,12 +19,23 @@ const IPDPage = () => {
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
 
-  const ipdPatients = mockPatients.filter((p) => p.department === 'IPD');
+  const { data: patientsResponse, isLoading } = usePatients({
+    department: 'IPD',
+    search: searchQuery || undefined,
+    status: statusFilter !== 'all' ? statusFilter : undefined,
+    limit: 100,
+  });
+
+  const ipdPatients = useMemo(() => {
+    return (patientsResponse?.data || []).map((p) => mapApiPatientToUI(p));
+  }, [patientsResponse]);
+
   const nurses = [...new Set(ipdPatients.map((p) => p.attendingNurse))];
 
   const filteredPatients = useMemo(() => {
     return ipdPatients.filter((patient) => {
       const matchesSearch =
+        !searchQuery ||
         patient.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         patient.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
         patient.diagnosis.toLowerCase().includes(searchQuery.toLowerCase());
@@ -47,7 +60,7 @@ const IPDPage = () => {
     total: ipdPatients.length,
     critical: ipdPatients.filter((p) => p.status === 'critical').length,
     inBed: ipdPatients.filter((p) => p.isInBed).length,
-    pendingDischarge: 2,
+    pendingDischarge: ipdPatients.filter((p) => p.status === 'stable').length,
   };
 
   return (
@@ -127,26 +140,32 @@ const IPDPage = () => {
             onClearFilters={clearFilters}
           />
 
-          <div className="grid grid-cols-1 gap-4">
-            {filteredPatients.length === 0 ? (
-              <div className="text-center py-12 text-muted-foreground bg-card rounded-xl border">
-                No patients found matching your filters
-              </div>
-            ) : (
-              filteredPatients
-                .sort((a, b) => {
-                  const priority = { critical: 0, warning: 1, stable: 2, normal: 3 };
-                  return priority[a.status] - priority[b.status];
-                })
-                .map((patient) => (
-                  <PatientCard
-                    key={patient.id}
-                    patient={patient}
-                    onViewDetails={handleViewPatient}
-                  />
-                ))
-            )}
-          </div>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-4">
+              {filteredPatients.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground bg-card rounded-xl border">
+                  No patients found matching your filters
+                </div>
+              ) : (
+                filteredPatients
+                  .sort((a, b) => {
+                    const priority = { critical: 0, warning: 1, stable: 2, normal: 3 };
+                    return priority[a.status] - priority[b.status];
+                  })
+                  .map((patient) => (
+                    <PatientCard
+                      key={patient.id}
+                      patient={patient}
+                      onViewDetails={handleViewPatient}
+                    />
+                  ))
+              )}
+            </div>
+          )}
         </div>
 
         {/* Discharge Panel */}
