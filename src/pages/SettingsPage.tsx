@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Settings,
-  User,
+  User as UserIcon,
   Bell,
   Shield,
   Palette,
@@ -12,6 +12,9 @@ import {
   Clock,
   Save,
   LogOut,
+  Loader2,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { DepartmentLayout } from "@/components/department/DepartmentLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,39 +32,148 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { useToast } from "@/hooks/use-toast";
+import { useAuthContext } from "@/contexts/AuthContext";
+import { authService } from "@/services/auth.service";
+import type { User } from "@/types/api";
+import { toast } from "sonner";
 
 const SettingsPage = () => {
-  const { toast } = useToast();
-  const [theme, setTheme] = useState("system");
-  const [notifications, setNotifications] = useState({
-    criticalAlerts: true,
-    medicationReminders: true,
-    shiftChanges: true,
-    patientUpdates: true,
-    emailNotifications: false,
-    soundEnabled: true,
-  });
-  const [profile, setProfile] = useState({
-    name: "Sarah Johnson",
-    email: "sarah.johnson@hospital.org",
-    phone: "+1 (555) 123-4567",
-    department: "IPD",
-    role: "Head Nurse",
+  const { user, logout, updateUser } = useAuthContext();
+  const [theme, setTheme] = useState(() => localStorage.getItem("theme") || "system");
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [isSavingPassword, setIsSavingPassword] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+
+  const [notifications, setNotifications] = useState(() => {
+    const stored = localStorage.getItem("notificationPrefs");
+    return stored
+      ? JSON.parse(stored)
+      : {
+          criticalAlerts: true,
+          medicationReminders: true,
+          shiftChanges: true,
+          patientUpdates: true,
+          emailNotifications: false,
+          soundEnabled: true,
+        };
   });
 
-  const handleSaveProfile = () => {
-    toast({
-      title: "Profile Updated",
-      description: "Your profile settings have been saved successfully.",
-    });
+  const [profile, setProfile] = useState({
+    name: user?.name || "",
+    email: user?.email || "",
+    phone: user?.phone || "",
+    department: user?.department || "General",
+    role: user?.role || "nurse",
+  });
+
+  const [passwords, setPasswords] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+
+  // Sync profile with user data
+  useEffect(() => {
+    if (user) {
+      setProfile({
+        name: user.name,
+        email: user.email,
+        phone: user.phone || "",
+        department: user.department,
+        role: user.role,
+      });
+    }
+  }, [user]);
+
+  // Apply theme
+  useEffect(() => {
+    const root = document.documentElement;
+    if (theme === "dark") {
+      root.classList.add("dark");
+    } else if (theme === "light") {
+      root.classList.remove("dark");
+    } else {
+      // system
+      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      if (prefersDark) {
+        root.classList.add("dark");
+      } else {
+        root.classList.remove("dark");
+      }
+    }
+    localStorage.setItem("theme", theme);
+  }, [theme]);
+
+  const getInitials = (name: string) => {
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  const handleSaveProfile = async () => {
+    setIsSavingProfile(true);
+    try {
+      // Update via API - the backend would need a PATCH /auth/me endpoint
+      // For now update local state
+      const updatedUser = {
+        ...user!,
+        name: profile.name,
+        phone: profile.phone,
+        department: profile.department as User['department'],
+      };
+      updateUser(updatedUser);
+      toast.success("Profile updated successfully");
+    } catch (error) {
+      toast.error("Failed to update profile");
+    } finally {
+      setIsSavingProfile(false);
+    }
   };
 
   const handleSaveNotifications = () => {
-    toast({
-      title: "Notifications Updated",
-      description: "Your notification preferences have been saved.",
-    });
+    localStorage.setItem("notificationPrefs", JSON.stringify(notifications));
+    toast.success("Notification preferences saved");
+  };
+
+  const handleChangePassword = async () => {
+    if (!passwords.currentPassword || !passwords.newPassword) {
+      toast.error("Please fill in all password fields");
+      return;
+    }
+    if (passwords.newPassword !== passwords.confirmPassword) {
+      toast.error("New passwords do not match");
+      return;
+    }
+    if (passwords.newPassword.length < 6) {
+      toast.error("Password must be at least 6 characters");
+      return;
+    }
+
+    setIsSavingPassword(true);
+    try {
+      await authService.changePassword(passwords.currentPassword, passwords.newPassword);
+      toast.success("Password changed successfully");
+      setPasswords({ currentPassword: "", newPassword: "", confirmPassword: "" });
+    } catch (error: any) {
+      const message = error?.response?.data?.message || "Failed to change password";
+      toast.error(message);
+    } finally {
+      setIsSavingPassword(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      await logout();
+    } finally {
+      setIsLoggingOut(false);
+    }
   };
 
   return (
@@ -69,8 +181,18 @@ const SettingsPage = () => {
       title="Settings"
       icon={Settings}
       headerActions={
-        <Button variant="outline" size="sm" className="gap-2 text-destructive hover:text-destructive">
-          <LogOut className="h-4 w-4" />
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-2 text-destructive hover:text-destructive"
+          onClick={handleLogout}
+          disabled={isLoggingOut}
+        >
+          {isLoggingOut ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <LogOut className="h-4 w-4" />
+          )}
           <span className="hidden sm:inline">Sign Out</span>
         </Button>
       }
@@ -78,7 +200,7 @@ const SettingsPage = () => {
       <Tabs defaultValue="profile" className="space-y-6">
         <TabsList className="grid w-full grid-cols-4 lg:w-[500px]">
           <TabsTrigger value="profile" className="gap-1 sm:gap-2">
-            <User className="h-4 w-4" />
+            <UserIcon className="h-4 w-4" />
             <span className="hidden sm:inline">Profile</span>
           </TabsTrigger>
           <TabsTrigger value="notifications" className="gap-1 sm:gap-2">
@@ -108,16 +230,15 @@ const SettingsPage = () => {
               <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
                 <Avatar className="h-16 w-16 sm:h-20 sm:w-20">
                   <AvatarFallback className="text-xl sm:text-2xl bg-primary/20 text-primary">
-                    SJ
+                    {getInitials(profile.name || "U")}
                   </AvatarFallback>
                 </Avatar>
                 <div className="text-center sm:text-left">
-                  <Button variant="outline" size="sm">
+                  <p className="font-semibold text-lg">{profile.name || "User"}</p>
+                  <p className="text-sm text-muted-foreground capitalize">{profile.role} • {profile.department}</p>
+                  <Button variant="outline" size="sm" className="mt-2">
                     Change Photo
                   </Button>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    JPG, PNG or GIF. Max 2MB.
-                  </p>
                 </div>
               </div>
 
@@ -138,7 +259,8 @@ const SettingsPage = () => {
                     id="email"
                     type="email"
                     value={profile.email}
-                    onChange={(e) => setProfile({ ...profile, email: e.target.value })}
+                    disabled
+                    className="bg-muted"
                   />
                 </div>
                 <div className="space-y-2">
@@ -153,7 +275,7 @@ const SettingsPage = () => {
                   <Label htmlFor="department">Department</Label>
                   <Select
                     value={profile.department}
-                    onValueChange={(value) => setProfile({ ...profile, department: value })}
+                    onValueChange={(value) => setProfile({ ...profile, department: value as User['department'] })}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -163,18 +285,20 @@ const SettingsPage = () => {
                       <SelectItem value="IPD">IPD</SelectItem>
                       <SelectItem value="Emergency">Emergency</SelectItem>
                       <SelectItem value="ICU">ICU</SelectItem>
+                      <SelectItem value="General">General</SelectItem>
+                      <SelectItem value="Admin">Admin</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2 sm:col-span-2 md:col-span-1">
                   <Label htmlFor="role">Role</Label>
-                  <Input id="role" value={profile.role} disabled className="bg-muted" />
+                  <Input id="role" value={profile.role} disabled className="bg-muted capitalize" />
                 </div>
               </div>
 
               <div className="flex justify-end">
-                <Button onClick={handleSaveProfile} className="gap-2 w-full sm:w-auto">
-                  <Save className="h-4 w-4" />
+                <Button onClick={handleSaveProfile} className="gap-2 w-full sm:w-auto" disabled={isSavingProfile}>
+                  {isSavingProfile ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                   Save Changes
                 </Button>
               </div>
@@ -193,105 +317,30 @@ const SettingsPage = () => {
             </CardHeader>
             <CardContent className="space-y-4 sm:space-y-6">
               <div className="space-y-4">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="space-y-0.5 flex-1 min-w-0">
-                    <Label className="text-sm">Critical Alerts</Label>
-                    <p className="text-xs sm:text-sm text-muted-foreground">
-                      Immediate alerts for critical conditions
-                    </p>
+                {[
+                  { key: "criticalAlerts", label: "Critical Alerts", desc: "Immediate alerts for critical conditions" },
+                  { key: "medicationReminders", label: "Medication Reminders", desc: "Notified when medications are due" },
+                  { key: "shiftChanges", label: "Shift Changes", desc: "Reminders before shift changes" },
+                  { key: "patientUpdates", label: "Patient Updates", desc: "Changes to assigned patients" },
+                  { key: "emailNotifications", label: "Email Notifications", desc: "Also send to your email" },
+                  { key: "soundEnabled", label: "Sound Alerts", desc: "Play sound for notifications" },
+                ].map((item, idx) => (
+                  <div key={item.key}>
+                    {idx > 0 && <Separator className="mb-4" />}
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="space-y-0.5 flex-1 min-w-0">
+                        <Label className="text-sm">{item.label}</Label>
+                        <p className="text-xs sm:text-sm text-muted-foreground">{item.desc}</p>
+                      </div>
+                      <Switch
+                        checked={notifications[item.key as keyof typeof notifications]}
+                        onCheckedChange={(checked) =>
+                          setNotifications({ ...notifications, [item.key]: checked })
+                        }
+                      />
+                    </div>
                   </div>
-                  <Switch
-                    checked={notifications.criticalAlerts}
-                    onCheckedChange={(checked) =>
-                      setNotifications({ ...notifications, criticalAlerts: checked })
-                    }
-                  />
-                </div>
-
-                <Separator />
-
-                <div className="flex items-center justify-between gap-4">
-                  <div className="space-y-0.5 flex-1 min-w-0">
-                    <Label className="text-sm">Medication Reminders</Label>
-                    <p className="text-xs sm:text-sm text-muted-foreground">
-                      Notified when medications are due
-                    </p>
-                  </div>
-                  <Switch
-                    checked={notifications.medicationReminders}
-                    onCheckedChange={(checked) =>
-                      setNotifications({ ...notifications, medicationReminders: checked })
-                    }
-                  />
-                </div>
-
-                <Separator />
-
-                <div className="flex items-center justify-between gap-4">
-                  <div className="space-y-0.5 flex-1 min-w-0">
-                    <Label className="text-sm">Shift Changes</Label>
-                    <p className="text-xs sm:text-sm text-muted-foreground">
-                      Reminders before shift changes
-                    </p>
-                  </div>
-                  <Switch
-                    checked={notifications.shiftChanges}
-                    onCheckedChange={(checked) =>
-                      setNotifications({ ...notifications, shiftChanges: checked })
-                    }
-                  />
-                </div>
-
-                <Separator />
-
-                <div className="flex items-center justify-between gap-4">
-                  <div className="space-y-0.5 flex-1 min-w-0">
-                    <Label className="text-sm">Patient Updates</Label>
-                    <p className="text-xs sm:text-sm text-muted-foreground">
-                      Changes to assigned patients
-                    </p>
-                  </div>
-                  <Switch
-                    checked={notifications.patientUpdates}
-                    onCheckedChange={(checked) =>
-                      setNotifications({ ...notifications, patientUpdates: checked })
-                    }
-                  />
-                </div>
-
-                <Separator />
-
-                <div className="flex items-center justify-between gap-4">
-                  <div className="space-y-0.5 flex-1 min-w-0">
-                    <Label className="text-sm">Email Notifications</Label>
-                    <p className="text-xs sm:text-sm text-muted-foreground">
-                      Also send to your email
-                    </p>
-                  </div>
-                  <Switch
-                    checked={notifications.emailNotifications}
-                    onCheckedChange={(checked) =>
-                      setNotifications({ ...notifications, emailNotifications: checked })
-                    }
-                  />
-                </div>
-
-                <Separator />
-
-                <div className="flex items-center justify-between gap-4">
-                  <div className="space-y-0.5 flex-1 min-w-0">
-                    <Label className="text-sm">Sound Alerts</Label>
-                    <p className="text-xs sm:text-sm text-muted-foreground">
-                      Play sound for notifications
-                    </p>
-                  </div>
-                  <Switch
-                    checked={notifications.soundEnabled}
-                    onCheckedChange={(checked) =>
-                      setNotifications({ ...notifications, soundEnabled: checked })
-                    }
-                  />
-                </div>
+                ))}
               </div>
 
               <div className="flex justify-end">
@@ -317,30 +366,21 @@ const SettingsPage = () => {
               <div className="space-y-4">
                 <Label>Theme</Label>
                 <div className="grid grid-cols-3 gap-2 sm:gap-4">
-                  <Button
-                    variant={theme === "light" ? "default" : "outline"}
-                    className="flex flex-col gap-1 sm:gap-2 h-auto py-3 sm:py-4"
-                    onClick={() => setTheme("light")}
-                  >
-                    <Sun className="h-5 w-5 sm:h-6 sm:w-6" />
-                    <span className="text-xs sm:text-sm">Light</span>
-                  </Button>
-                  <Button
-                    variant={theme === "dark" ? "default" : "outline"}
-                    className="flex flex-col gap-1 sm:gap-2 h-auto py-3 sm:py-4"
-                    onClick={() => setTheme("dark")}
-                  >
-                    <Moon className="h-5 w-5 sm:h-6 sm:w-6" />
-                    <span className="text-xs sm:text-sm">Dark</span>
-                  </Button>
-                  <Button
-                    variant={theme === "system" ? "default" : "outline"}
-                    className="flex flex-col gap-1 sm:gap-2 h-auto py-3 sm:py-4"
-                    onClick={() => setTheme("system")}
-                  >
-                    <Monitor className="h-5 w-5 sm:h-6 sm:w-6" />
-                    <span className="text-xs sm:text-sm">System</span>
-                  </Button>
+                  {[
+                    { value: "light", icon: Sun, label: "Light" },
+                    { value: "dark", icon: Moon, label: "Dark" },
+                    { value: "system", icon: Monitor, label: "System" },
+                  ].map((t) => (
+                    <Button
+                      key={t.value}
+                      variant={theme === t.value ? "default" : "outline"}
+                      className="flex flex-col gap-1 sm:gap-2 h-auto py-3 sm:py-4"
+                      onClick={() => setTheme(t.value)}
+                    >
+                      <t.icon className="h-5 w-5 sm:h-6 sm:w-6" />
+                      <span className="text-xs sm:text-sm">{t.label}</span>
+                    </Button>
+                  ))}
                 </div>
               </div>
 
@@ -415,15 +455,57 @@ const SettingsPage = () => {
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="current-password">Current Password</Label>
-                  <Input id="current-password" type="password" />
+                  <div className="relative">
+                    <Input
+                      id="current-password"
+                      type={showCurrentPassword ? "text" : "password"}
+                      value={passwords.currentPassword}
+                      onChange={(e) => setPasswords({ ...passwords, currentPassword: e.target.value })}
+                      className="pr-10"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
+                      onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                    >
+                      {showCurrentPassword ? <EyeOff className="h-4 w-4 text-muted-foreground" /> : <Eye className="h-4 w-4 text-muted-foreground" />}
+                    </Button>
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="new-password">New Password</Label>
-                  <Input id="new-password" type="password" />
+                  <div className="relative">
+                    <Input
+                      id="new-password"
+                      type={showNewPassword ? "text" : "password"}
+                      value={passwords.newPassword}
+                      onChange={(e) => setPasswords({ ...passwords, newPassword: e.target.value })}
+                      className="pr-10"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
+                      onClick={() => setShowNewPassword(!showNewPassword)}
+                    >
+                      {showNewPassword ? <EyeOff className="h-4 w-4 text-muted-foreground" /> : <Eye className="h-4 w-4 text-muted-foreground" />}
+                    </Button>
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="confirm-password">Confirm New Password</Label>
-                  <Input id="confirm-password" type="password" />
+                  <Input
+                    id="confirm-password"
+                    type="password"
+                    value={passwords.confirmPassword}
+                    onChange={(e) => setPasswords({ ...passwords, confirmPassword: e.target.value })}
+                  />
+                  {passwords.confirmPassword && passwords.newPassword !== passwords.confirmPassword && (
+                    <p className="text-xs text-destructive">Passwords do not match</p>
+                  )}
                 </div>
               </div>
 
@@ -458,8 +540,12 @@ const SettingsPage = () => {
               </div>
 
               <div className="flex justify-end">
-                <Button className="gap-2 w-full sm:w-auto">
-                  <Save className="h-4 w-4" />
+                <Button
+                  onClick={handleChangePassword}
+                  className="gap-2 w-full sm:w-auto"
+                  disabled={isSavingPassword || !passwords.currentPassword || !passwords.newPassword || passwords.newPassword !== passwords.confirmPassword}
+                >
+                  {isSavingPassword ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                   Update Password
                 </Button>
               </div>
