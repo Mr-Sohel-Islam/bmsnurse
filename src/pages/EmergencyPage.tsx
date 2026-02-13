@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Siren, Plus, Phone, Radio } from "lucide-react";
+import { Siren, Plus, Phone, Radio, Loader2 } from "lucide-react";
 import { DepartmentLayout } from "@/components/department/DepartmentLayout";
 import { PatientFilters } from "@/components/filters/PatientFilters";
 import { PatientCard } from "@/components/dashboard/PatientCard";
@@ -7,7 +7,9 @@ import { TriageQueue } from "@/components/emergency/TriageQueue";
 import { EmergencyStats } from "@/components/emergency/EmergencyStats";
 import { PatientDetailModal } from "@/components/modals/PatientDetailModal";
 import { Button } from "@/components/ui/button";
-import { mockPatients, type Patient, type PatientStatus } from "@/data/mockPatients";
+import { usePatients } from "@/hooks/usePatients";
+import { mapApiPatientToUI } from "@/utils/patientMapper";
+import type { Patient, PatientStatus } from "@/data/mockPatients";
 
 const EmergencyPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -16,12 +18,23 @@ const EmergencyPage = () => {
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
 
-  const emergencyPatients = mockPatients.filter((p) => p.department === 'Emergency');
+  const { data: patientsResponse, isLoading } = usePatients({
+    department: 'Emergency',
+    search: searchQuery || undefined,
+    status: statusFilter !== 'all' ? statusFilter : undefined,
+    limit: 100,
+  });
+
+  const emergencyPatients = useMemo(() => {
+    return (patientsResponse?.data || []).map((p) => mapApiPatientToUI(p));
+  }, [patientsResponse]);
+
   const nurses = [...new Set(emergencyPatients.map((p) => p.attendingNurse))];
 
   const filteredPatients = useMemo(() => {
     return emergencyPatients.filter((patient) => {
       const matchesSearch =
+        !searchQuery ||
         patient.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         patient.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
         patient.diagnosis.toLowerCase().includes(searchQuery.toLowerCase());
@@ -100,26 +113,32 @@ const EmergencyPage = () => {
 
         <h2 className="text-lg md:text-xl font-semibold">Current ER Patients</h2>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {filteredPatients.length === 0 ? (
-            <div className="col-span-full text-center py-8 md:py-12 text-muted-foreground bg-card rounded-xl border">
-              No patients found matching your filters
-            </div>
-          ) : (
-            filteredPatients
-              .sort((a, b) => {
-                const priority = { critical: 0, warning: 1, stable: 2, normal: 3 };
-                return priority[a.status] - priority[b.status];
-              })
-              .map((patient) => (
-                <PatientCard
-                  key={patient.id}
-                  patient={patient}
-                  onViewDetails={handleViewPatient}
-                />
-              ))
-          )}
-        </div>
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {filteredPatients.length === 0 ? (
+              <div className="col-span-full text-center py-8 md:py-12 text-muted-foreground bg-card rounded-xl border">
+                No patients found matching your filters
+              </div>
+            ) : (
+              filteredPatients
+                .sort((a, b) => {
+                  const priority = { critical: 0, warning: 1, stable: 2, normal: 3 };
+                  return priority[a.status] - priority[b.status];
+                })
+                .map((patient) => (
+                  <PatientCard
+                    key={patient.id}
+                    patient={patient}
+                    onViewDetails={handleViewPatient}
+                  />
+                ))
+            )}
+          </div>
+        )}
       </div>
 
       <PatientDetailModal

@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Building2, Users, Clock, CheckCircle, Calendar } from "lucide-react";
+import { Building2, Users, Clock, CheckCircle, Calendar, Loader2 } from "lucide-react";
 import { DepartmentLayout } from "@/components/department/DepartmentLayout";
 import { PatientFilters } from "@/components/filters/PatientFilters";
 import { PatientCard } from "@/components/dashboard/PatientCard";
@@ -7,7 +7,9 @@ import { AppointmentQueue } from "@/components/opd/AppointmentQueue";
 import { PatientDetailModal } from "@/components/modals/PatientDetailModal";
 import { StatsCard } from "@/components/dashboard/StatsCard";
 import { Button } from "@/components/ui/button";
-import { mockPatients, type Patient, type PatientStatus } from "@/data/mockPatients";
+import { usePatients } from "@/hooks/usePatients";
+import { mapApiPatientToUI } from "@/utils/patientMapper";
+import type { Patient, PatientStatus } from "@/data/mockPatients";
 
 const OPDPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -16,12 +18,23 @@ const OPDPage = () => {
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
 
-  const opdPatients = mockPatients.filter((p) => p.department === 'OPD');
+  const { data: patientsResponse, isLoading } = usePatients({
+    department: 'OPD',
+    search: searchQuery || undefined,
+    status: statusFilter !== 'all' ? statusFilter : undefined,
+    limit: 100,
+  });
+
+  const opdPatients = useMemo(() => {
+    return (patientsResponse?.data || []).map((p) => mapApiPatientToUI(p));
+  }, [patientsResponse]);
+
   const nurses = [...new Set(opdPatients.map((p) => p.attendingNurse))];
 
   const filteredPatients = useMemo(() => {
     return opdPatients.filter((patient) => {
       const matchesSearch =
+        !searchQuery ||
         patient.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         patient.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
         patient.diagnosis.toLowerCase().includes(searchQuery.toLowerCase());
@@ -40,6 +53,13 @@ const OPDPage = () => {
     setSearchQuery("");
     setStatusFilter('all');
     setNurseFilter('all');
+  };
+
+  const stats = {
+    total: opdPatients.length,
+    waiting: opdPatients.filter((p) => p.status === 'normal').length,
+    inConsultation: opdPatients.filter((p) => p.status === 'stable').length,
+    completed: 0,
   };
 
   return (
@@ -74,26 +94,26 @@ const OPDPage = () => {
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
         <StatsCard
-          title="Today's Appointments"
-          value={12}
+          title="Today's Patients"
+          value={stats.total}
           icon={Calendar}
           variant="primary"
         />
         <StatsCard
           title="Waiting"
-          value={4}
+          value={stats.waiting}
           icon={Clock}
           variant="warning"
         />
         <StatsCard
           title="In Consultation"
-          value={2}
+          value={stats.inConsultation}
           icon={Users}
           variant="accent"
         />
         <StatsCard
           title="Completed"
-          value={6}
+          value={stats.completed}
           icon={CheckCircle}
           variant="default"
         />
@@ -119,21 +139,27 @@ const OPDPage = () => {
       </div>
 
       {/* Patient List */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {filteredPatients.length === 0 ? (
-          <div className="col-span-2 text-center py-12 text-muted-foreground bg-card rounded-xl border">
-            No patients found matching your filters
-          </div>
-        ) : (
-          filteredPatients.map((patient) => (
-            <PatientCard
-              key={patient.id}
-              patient={patient}
-              onViewDetails={handleViewPatient}
-            />
-          ))
-        )}
-      </div>
+      {isLoading ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {filteredPatients.length === 0 ? (
+            <div className="col-span-2 text-center py-12 text-muted-foreground bg-card rounded-xl border">
+              No patients found matching your filters
+            </div>
+          ) : (
+            filteredPatients.map((patient) => (
+              <PatientCard
+                key={patient.id}
+                patient={patient}
+                onViewDetails={handleViewPatient}
+              />
+            ))
+          )}
+        </div>
+      )}
 
       <PatientDetailModal
         patient={selectedPatient}
