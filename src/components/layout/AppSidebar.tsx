@@ -14,13 +14,13 @@ import {
   ChevronRight,
   Stethoscope,
   Menu,
-  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useAuthContext } from "@/contexts/AuthContext";
 
 const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/" },
@@ -32,11 +32,6 @@ const menuItems = [
   { icon: Bell, label: "Alerts", path: "/alerts", badge: 5 },
 ];
 
-const bottomMenuItems = [
-  { icon: Settings, label: "Settings", path: "/settings" },
-  { icon: LogOut, label: "Logout", path: "/logout" },
-];
-
 interface SidebarContentProps {
   collapsed: boolean;
   onCollapse?: () => void;
@@ -45,6 +40,20 @@ interface SidebarContentProps {
 
 function SidebarContent({ collapsed, onCollapse, onNavigate }: SidebarContentProps) {
   const location = useLocation();
+  const { user, logout } = useAuthContext();
+
+  const getInitials = (name: string) =>
+    name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+
+  const handleLogout = async () => {
+    onNavigate?.();
+    await logout();
+  };
 
   return (
     <>
@@ -128,21 +137,30 @@ function SidebarContent({ collapsed, onCollapse, onNavigate }: SidebarContentPro
 
       {/* Bottom Menu */}
       <div className="p-4 border-t border-sidebar-border space-y-2">
-        {bottomMenuItems.map((item) => (
-          <NavLink
-            key={item.path}
-            to={item.path}
-            onClick={onNavigate}
-            className={cn(
-              "flex items-center gap-3 px-3 py-3 rounded-xl transition-all",
-              "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent",
-              collapsed && "justify-center"
-            )}
-          >
-            <item.icon className="h-5 w-5 shrink-0" />
-            {!collapsed && <span>{item.label}</span>}
-          </NavLink>
-        ))}
+        <NavLink
+          to="/settings"
+          onClick={onNavigate}
+          className={cn(
+            "flex items-center gap-3 px-3 py-3 rounded-xl transition-all",
+            "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent",
+            location.pathname === "/settings" && "bg-sidebar-primary text-sidebar-primary-foreground",
+            collapsed && "justify-center"
+          )}
+        >
+          <Settings className="h-5 w-5 shrink-0" />
+          {!collapsed && <span>Settings</span>}
+        </NavLink>
+        <button
+          onClick={handleLogout}
+          className={cn(
+            "flex items-center gap-3 px-3 py-3 rounded-xl transition-all w-full",
+            "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent",
+            collapsed && "justify-center"
+          )}
+        >
+          <LogOut className="h-5 w-5 shrink-0" />
+          {!collapsed && <span>Logout</span>}
+        </button>
       </div>
 
       {/* User Info */}
@@ -150,11 +168,17 @@ function SidebarContent({ collapsed, onCollapse, onNavigate }: SidebarContentPro
         <div className="p-4 border-t border-sidebar-border">
           <div className="flex items-center gap-3 p-3 bg-sidebar-accent rounded-xl">
             <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
-              <span className="text-sm font-semibold text-primary">SJ</span>
+              <span className="text-sm font-semibold text-primary">
+                {user ? getInitials(user.name) : "??"}
+              </span>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-sidebar-foreground truncate">Sarah Johnson</p>
-              <p className="text-xs text-sidebar-foreground/60 truncate">Head Nurse • IPD</p>
+              <p className="text-sm font-medium text-sidebar-foreground truncate">
+                {user?.name || "Not logged in"}
+              </p>
+              <p className="text-xs text-sidebar-foreground/60 truncate capitalize">
+                {user ? `${user.role} • ${user.department}` : "—"}
+              </p>
             </div>
           </div>
         </div>
@@ -168,7 +192,6 @@ export function AppSidebar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const isMobile = useIsMobile();
 
-  // Mobile: Sheet drawer
   if (isMobile) {
     return (
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
@@ -183,9 +206,9 @@ export function AppSidebar() {
         </SheetTrigger>
         <SheetContent side="left" className="p-0 w-72 bg-sidebar border-sidebar-border">
           <div className="h-full flex flex-col">
-            <SidebarContent 
-              collapsed={false} 
-              onNavigate={() => setMobileOpen(false)} 
+            <SidebarContent
+              collapsed={false}
+              onNavigate={() => setMobileOpen(false)}
             />
           </div>
         </SheetContent>
@@ -193,7 +216,6 @@ export function AppSidebar() {
     );
   }
 
-  // Desktop: Fixed sidebar
   return (
     <aside
       className={cn(
@@ -201,9 +223,9 @@ export function AppSidebar() {
         collapsed ? "w-20" : "w-64"
       )}
     >
-      <SidebarContent 
-        collapsed={collapsed} 
-        onCollapse={() => setCollapsed(!collapsed)} 
+      <SidebarContent
+        collapsed={collapsed}
+        onCollapse={() => setCollapsed(!collapsed)}
       />
     </aside>
   );
