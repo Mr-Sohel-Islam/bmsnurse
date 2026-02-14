@@ -1,68 +1,11 @@
+import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Siren, Clock, User, AlertTriangle, ArrowRight } from "lucide-react";
-
-interface TriagePatient {
-  id: string;
-  name: string;
-  age: number;
-  chiefComplaint: string;
-  triageLevel: 1 | 2 | 3 | 4 | 5;
-  arrivalTime: string;
-  waitTime: number;
-  assignedBed?: string;
-}
-
-const mockTriageQueue: TriagePatient[] = [
-  {
-    id: 'ER-001',
-    name: 'Robert Davis',
-    age: 72,
-    chiefComplaint: 'Severe respiratory distress',
-    triageLevel: 1,
-    arrivalTime: '08:30 AM',
-    waitTime: 0,
-    assignedBed: 'ER-3',
-  },
-  {
-    id: 'ER-002',
-    name: 'Michael Thompson',
-    age: 28,
-    chiefComplaint: 'MVA - multiple lacerations',
-    triageLevel: 2,
-    arrivalTime: '08:45 AM',
-    waitTime: 0,
-    assignedBed: 'ER-1',
-  },
-  {
-    id: 'ER-003',
-    name: 'Anna Johnson',
-    age: 45,
-    chiefComplaint: 'Chest pain, possible cardiac',
-    triageLevel: 2,
-    arrivalTime: '09:00 AM',
-    waitTime: 5,
-  },
-  {
-    id: 'ER-004',
-    name: 'Kevin Brown',
-    age: 34,
-    chiefComplaint: 'Severe abdominal pain',
-    triageLevel: 3,
-    arrivalTime: '09:15 AM',
-    waitTime: 15,
-  },
-  {
-    id: 'ER-005',
-    name: 'Sarah Miller',
-    age: 8,
-    chiefComplaint: 'High fever, vomiting',
-    triageLevel: 3,
-    arrivalTime: '09:20 AM',
-    waitTime: 20,
-  },
-];
+import { Siren, Clock, User, AlertTriangle, ArrowRight, Loader2 } from "lucide-react";
+import { usePatients } from "@/hooks/usePatients";
+import type { Patient } from "@/types/api";
+import { format } from "date-fns";
 
 const triageLevelConfig = {
   1: { label: 'Resuscitation', color: 'bg-status-critical text-white', priority: 'Immediate' },
@@ -72,28 +15,79 @@ const triageLevelConfig = {
   5: { label: 'Non-Urgent', color: 'bg-status-stable text-white', priority: '< 120 min' },
 };
 
+function getTriageLevel(patient: Patient): 1 | 2 | 3 | 4 | 5 {
+  if (patient.status === 'critical') return 1;
+  if (patient.status === 'warning') return 2;
+  return 3;
+}
+
+function getWaitMinutes(admissionDate: string): number {
+  return Math.max(0, Math.floor((Date.now() - new Date(admissionDate).getTime()) / 60000));
+}
+
 export function TriageQueue() {
+  const { data: patientsResponse, isLoading } = usePatients({
+    department: 'Emergency',
+    limit: 20,
+  });
+
+  const triagePatients = useMemo(() => {
+    const patients = patientsResponse?.data || [];
+    return patients
+      .map((p) => {
+        const bedRef = p.bed;
+        const bedNumber = typeof bedRef === 'object' && bedRef ? bedRef.bedNumber : undefined;
+        return {
+          id: p.patientId || p._id,
+          name: p.name,
+          age: p.age,
+          chiefComplaint: p.diagnosis || 'Awaiting assessment',
+          triageLevel: getTriageLevel(p),
+          arrivalTime: format(new Date(p.admissionDate), 'hh:mm a'),
+          waitTime: p.isInBed ? 0 : getWaitMinutes(p.admissionDate),
+          assignedBed: bedNumber,
+        };
+      })
+      .sort((a, b) => a.triageLevel - b.triageLevel);
+  }, [patientsResponse]);
+
+  const levelCounts = useMemo(() => {
+    const counts: Record<number, number> = { 1: 0, 2: 0, 3: 0 };
+    triagePatients.forEach((p) => {
+      if (p.triageLevel <= 3) counts[p.triageLevel]++;
+    });
+    return counts;
+  }, [triagePatients]);
+
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-2">
           <CardTitle className="flex items-center gap-2">
             <Siren className="h-5 w-5 text-dept-emergency" />
             Emergency Triage Queue
           </CardTitle>
           <div className="flex gap-2">
-            {[1, 2, 3].map((level) => (
-              <Badge key={level} className={triageLevelConfig[level as 1 | 2 | 3].color}>
-                Level {level}: {mockTriageQueue.filter((p) => p.triageLevel === level).length}
+            {([1, 2, 3] as const).map((level) => (
+              <Badge key={level} className={triageLevelConfig[level].color}>
+                Level {level}: {levelCounts[level]}
               </Badge>
             ))}
           </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
-        {mockTriageQueue
-          .sort((a, b) => a.triageLevel - b.triageLevel)
-          .map((patient) => {
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : triagePatients.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            <Siren className="h-10 w-10 mx-auto mb-2 opacity-50" />
+            <p className="text-sm">No patients in triage queue</p>
+          </div>
+        ) : (
+          triagePatients.map((patient) => {
             const config = triageLevelConfig[patient.triageLevel];
             return (
               <div
@@ -106,7 +100,7 @@ export function TriageQueue() {
                     : 'border-l-status-stable bg-muted/30'
                 }`}
               >
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between flex-wrap gap-3">
                   <div className="flex items-center gap-4">
                     <div className="flex flex-col items-center">
                       <Badge className={config.color}>
@@ -152,7 +146,8 @@ export function TriageQueue() {
                 </div>
               </div>
             );
-          })}
+          })
+        )}
       </CardContent>
     </Card>
   );
