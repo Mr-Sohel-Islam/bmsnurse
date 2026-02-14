@@ -1,66 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Bed, User, AlertTriangle, Clock } from "lucide-react";
-
-interface BedInfo {
-  bedNumber: string;
-  roomNumber: string;
-  status: 'occupied' | 'available' | 'maintenance' | 'reserved';
-  patient?: {
-    name: string;
-    id: string;
-    admissionDate: string;
-    status: 'critical' | 'warning' | 'stable';
-  };
-}
-
-const mockBeds: BedInfo[] = [
-  {
-    bedNumber: 'B-101',
-    roomNumber: 'R-10',
-    status: 'occupied',
-    patient: { name: 'John Smith', id: 'P001', admissionDate: '2026-01-20', status: 'critical' },
-  },
-  {
-    bedNumber: 'B-102',
-    roomNumber: 'R-10',
-    status: 'occupied',
-    patient: { name: 'Mary Williams', id: 'P002', admissionDate: '2026-01-21', status: 'stable' },
-  },
-  {
-    bedNumber: 'B-103',
-    roomNumber: 'R-10',
-    status: 'available',
-  },
-  {
-    bedNumber: 'B-201',
-    roomNumber: 'R-20',
-    status: 'maintenance',
-  },
-  {
-    bedNumber: 'B-202',
-    roomNumber: 'R-20',
-    status: 'reserved',
-  },
-  {
-    bedNumber: 'B-205',
-    roomNumber: 'R-20',
-    status: 'occupied',
-    patient: { name: 'James Wilson', id: 'P005', admissionDate: '2026-01-21', status: 'warning' },
-  },
-  {
-    bedNumber: 'B-301',
-    roomNumber: 'R-30',
-    status: 'occupied',
-    patient: { name: 'Jennifer Martinez', id: 'P008', admissionDate: '2026-01-20', status: 'stable' },
-  },
-  {
-    bedNumber: 'B-302',
-    roomNumber: 'R-30',
-    status: 'available',
-  },
-];
+import { Bed, User, Clock, Loader2 } from "lucide-react";
+import { useBeds } from "@/hooks/useBeds";
+import type { Bed as BedType, Patient } from "@/types/api";
 
 const statusStyles = {
   occupied: 'border-primary bg-primary/5',
@@ -72,16 +15,45 @@ const statusStyles = {
 const patientStatusStyles = {
   critical: 'bg-status-critical',
   warning: 'bg-status-warning',
-  stable: 'bg-status-stable',
+  normal: 'bg-status-stable',
 };
 
 export function BedManagement() {
+  const { data: beds = [], isLoading } = useBeds({ department: 'IPD' });
+
   const stats = {
-    total: mockBeds.length,
-    occupied: mockBeds.filter((b) => b.status === 'occupied').length,
-    available: mockBeds.filter((b) => b.status === 'available').length,
-    maintenance: mockBeds.filter((b) => b.status === 'maintenance').length,
+    total: beds.length,
+    occupied: beds.filter((b) => b.status === 'occupied').length,
+    available: beds.filter((b) => b.status === 'available').length,
+    maintenance: beds.filter((b) => b.status === 'maintenance').length,
   };
+
+  const getPatientInfo = (bed: BedType) => {
+    if (!bed.currentPatient || typeof bed.currentPatient === 'string') return null;
+    const p = bed.currentPatient as Patient;
+    return {
+      name: p.name,
+      id: p.patientId || p._id,
+      admissionDate: p.admissionDate,
+      status: p.status as 'critical' | 'warning' | 'normal',
+    };
+  };
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Bed className="h-5 w-5 text-primary" />
+            Bed Management
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>
@@ -99,64 +71,80 @@ export function BedManagement() {
         </div>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {mockBeds.map((bed) => (
-            <div
-              key={bed.bedNumber}
-              className={`p-4 rounded-xl border-2 ${statusStyles[bed.status]} transition-all hover:shadow-md`}
-            >
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <Bed className="h-5 w-5 text-muted-foreground" />
-                  <span className="font-bold">{bed.bedNumber}</span>
-                </div>
-                <span className="text-xs text-muted-foreground">{bed.roomNumber}</span>
-              </div>
-
-              {bed.status === 'occupied' && bed.patient && (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                      <User className="h-4 w-4 text-primary" />
+        {beds.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            <Bed className="h-10 w-10 mx-auto mb-2 opacity-50" />
+            <p className="text-sm">No beds found for this department</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {beds.map((bed) => {
+              const patient = getPatientInfo(bed);
+              return (
+                <div
+                  key={bed._id}
+                  className={`p-4 rounded-xl border-2 ${statusStyles[bed.status]} transition-all hover:shadow-md`}
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <Bed className="h-5 w-5 text-muted-foreground" />
+                      <span className="font-bold">{bed.bedNumber}</span>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{bed.patient.name}</p>
-                      <p className="text-xs text-muted-foreground">{bed.patient.id}</p>
+                    <span className="text-xs text-muted-foreground">{bed.ward}</span>
+                  </div>
+
+                  {bed.status === 'occupied' && patient && (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                          <User className="h-4 w-4 text-primary" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{patient.name}</p>
+                          <p className="text-xs text-muted-foreground">{patient.id}</p>
+                        </div>
+                        <div className={`w-3 h-3 rounded-full ${patientStatusStyles[patient.status] || 'bg-status-stable'}`} />
+                      </div>
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <Clock className="h-3 w-3" />
+                        <span>Since {new Date(patient.admissionDate).toLocaleDateString()}</span>
+                      </div>
                     </div>
-                    <div className={`w-3 h-3 rounded-full ${patientStatusStyles[bed.patient.status]}`} />
-                  </div>
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <Clock className="h-3 w-3" />
-                    <span>Since {new Date(bed.patient.admissionDate).toLocaleDateString()}</span>
-                  </div>
-                </div>
-              )}
+                  )}
 
-              {bed.status === 'available' && (
-                <div className="text-center py-2">
-                  <Badge className="bg-status-stable text-white">Available</Badge>
-                  <Button size="sm" variant="outline" className="w-full mt-2">
-                    Assign Patient
-                  </Button>
-                </div>
-              )}
+                  {bed.status === 'available' && (
+                    <div className="text-center py-2">
+                      <Badge className="bg-status-stable text-white">Available</Badge>
+                      <Button size="sm" variant="outline" className="w-full mt-2">
+                        Assign Patient
+                      </Button>
+                    </div>
+                  )}
 
-              {bed.status === 'maintenance' && (
-                <div className="text-center py-2">
-                  <Badge variant="secondary">Under Maintenance</Badge>
-                  <p className="text-xs text-muted-foreground mt-2">Est. available: 2h</p>
-                </div>
-              )}
+                  {bed.status === 'maintenance' && (
+                    <div className="text-center py-2">
+                      <Badge variant="secondary">Under Maintenance</Badge>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        {bed.lastSanitized
+                          ? `Sanitized: ${new Date(bed.lastSanitized).toLocaleDateString()}`
+                          : 'Est. available: TBD'}
+                      </p>
+                    </div>
+                  )}
 
-              {bed.status === 'reserved' && (
-                <div className="text-center py-2">
-                  <Badge className="bg-status-warning text-white">Reserved</Badge>
-                  <p className="text-xs text-muted-foreground mt-2">For incoming transfer</p>
+                  {bed.status === 'reserved' && (
+                    <div className="text-center py-2">
+                      <Badge className="bg-status-warning text-white">Reserved</Badge>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        {bed.notes || 'For incoming transfer'}
+                      </p>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          ))}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </CardContent>
     </Card>
   );
