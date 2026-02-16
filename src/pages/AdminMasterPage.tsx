@@ -5,14 +5,14 @@ import {
   Activity, 
   Clock, 
   Search, 
-  Filter,
   UserCheck,
   AlertCircle,
   MoreVertical,
   Eye,
   Edit,
   Trash2,
-  Plus
+  Plus,
+  Loader2
 } from "lucide-react";
 import { DepartmentLayout } from "@/components/department/DepartmentLayout";
 import { Button } from "@/components/ui/button";
@@ -35,32 +35,24 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { mockStaff, mockActivityLogs, mockSchedule } from "@/data/mockStaff";
-import { mockPatients } from "@/data/mockPatients";
+import { useStaff, useStaffStats } from "@/hooks/useStaff";
+import { usePatients } from "@/hooks/usePatients";
+import { useRecentActivities } from "@/hooks/useActivities";
+import { useAlertCounts } from "@/hooks/useAlerts";
 import { AssignTaskModal } from "@/components/tasks/AssignTaskModal";
 import { cn } from "@/lib/utils";
+import type { User, StaffMember, ActivityLog } from "@/types/api";
 
-const statusColors = {
-  online: "bg-green-500",
-  busy: "bg-yellow-500",
-  "on-break": "bg-orange-500",
-  offline: "bg-muted-foreground",
-};
-
-const statusLabels = {
-  online: "Online",
-  busy: "Busy",
-  "on-break": "On Break",
-  offline: "Offline",
-};
-
-const activityTypeIcons = {
+const activityTypeIcons: Record<string, string> = {
   task: "📋",
   patient: "🏥",
   medication: "💊",
   alert: "🔔",
   login: "🔐",
   logout: "🚪",
+  bed_assigned: "🛏️",
+  bed_released: "🛏️",
+  vital_recorded: "❤️",
 };
 
 export default function AdminMasterPage() {
@@ -69,45 +61,59 @@ export default function AdminMasterPage() {
   const [departmentFilter, setDepartmentFilter] = useState<string>("all");
   const [assignTaskOpen, setAssignTaskOpen] = useState(false);
 
-  const filteredStaff = mockStaff.filter((staff) => {
+  const { data: staffList = [], isLoading: staffLoading } = useStaff({
+    role: roleFilter !== "all" ? roleFilter : undefined,
+    department: departmentFilter !== "all" ? departmentFilter : undefined,
+  });
+  const { data: staffStats } = useStaffStats();
+  const { data: patientsResponse } = usePatients({ limit: 100 });
+  const { data: recentActivities = [], isLoading: activitiesLoading } = useRecentActivities(20);
+  const { data: alertCounts } = useAlertCounts();
+
+  const patients = patientsResponse?.data || [];
+
+  const filteredStaff = staffList.filter((staff) => {
     if (searchQuery && !staff.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
-    if (roleFilter !== "all" && staff.role !== roleFilter) return false;
-    if (departmentFilter !== "all" && staff.department !== departmentFilter) return false;
     return true;
   });
 
-  const getPatientNames = (patientIds: string[]) => {
-    return patientIds
-      .map((id) => mockPatients.find((p) => p.id === id)?.name || id)
-      .join(", ");
-  };
+  const getInitials = (name: string) => name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
 
   const stats = [
     { 
       label: "Total Staff", 
-      value: mockStaff.length, 
+      value: staffStats?.total ?? staffList.length, 
       icon: Users, 
       color: "text-primary" 
     },
     { 
-      label: "Currently Online", 
-      value: mockStaff.filter((s) => s.status === "online").length, 
+      label: "Active Staff", 
+      value: staffStats?.active ?? staffList.filter((s) => s.isActive).length, 
       icon: UserCheck, 
       color: "text-green-500" 
     },
     { 
-      label: "On Duty Today", 
-      value: mockSchedule.filter((s) => s.date === "2026-01-30").length, 
+      label: "Departments", 
+      value: staffStats?.byDepartment ? Object.keys(staffStats.byDepartment).length : 0, 
       icon: Clock, 
       color: "text-blue-500" 
     },
     { 
       label: "Active Alerts", 
-      value: 5, 
+      value: alertCounts?.unread ?? 0, 
       icon: AlertCircle, 
       color: "text-red-500" 
     },
   ];
+
+  const getActivityUser = (activity: ActivityLog) => {
+    if (typeof activity.user === "string") return activity.user;
+    return (activity.user as User)?.name || "Unknown";
+  };
+
+  const getActivityIcon = (action: string) => {
+    return activityTypeIcons[action] || "📝";
+  };
 
   return (
     <DepartmentLayout
@@ -167,9 +173,9 @@ export default function AdminMasterPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Roles</SelectItem>
-                      <SelectItem value="Nurse">Nurse</SelectItem>
-                      <SelectItem value="Doctor">Doctor</SelectItem>
-                      <SelectItem value="Admin">Admin</SelectItem>
+                      <SelectItem value="nurse">Nurse</SelectItem>
+                      <SelectItem value="doctor">Doctor</SelectItem>
+                      <SelectItem value="admin">Admin</SelectItem>
                     </SelectContent>
                   </Select>
                   <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
@@ -188,97 +194,80 @@ export default function AdminMasterPage() {
               </div>
             </CardHeader>
             <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Staff Member</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead>Department</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Shift</TableHead>
-                    <TableHead>Patients</TableHead>
-                    <TableHead className="w-12"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredStaff.map((staff) => (
-                    <TableRow key={staff.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <div className="relative">
+              {staffLoading ? (
+                <div className="flex items-center justify-center py-16">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Staff Member</TableHead>
+                      <TableHead>Role</TableHead>
+                      <TableHead>Department</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="w-12"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredStaff.map((staff) => (
+                      <TableRow key={staff._id}>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
                               <span className="text-sm font-semibold text-primary">
-                                {staff.avatar}
+                                {staff.avatar || getInitials(staff.name)}
                               </span>
                             </div>
-                            <span
-                              className={cn(
-                                "absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-background",
-                                statusColors[staff.status]
-                              )}
-                            />
+                            <div>
+                              <p className="font-medium">{staff.name}</p>
+                              <p className="text-xs text-muted-foreground">{staff.email}</p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="font-medium">{staff.name}</p>
-                            <p className="text-xs text-muted-foreground">{staff.email}</p>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{staff.role}</Badge>
-                      </TableCell>
-                      <TableCell>{staff.department}</TableCell>
-                      <TableCell>
-                        <Badge
-                          variant="secondary"
-                          className={cn(
-                            "text-xs",
-                            staff.status === "online" && "bg-green-500/10 text-green-600",
-                            staff.status === "busy" && "bg-yellow-500/10 text-yellow-600",
-                            staff.status === "on-break" && "bg-orange-500/10 text-orange-600",
-                            staff.status === "offline" && "bg-muted text-muted-foreground"
-                          )}
-                        >
-                          {statusLabels[staff.status]}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <span className="capitalize">{staff.shift}</span>
-                      </TableCell>
-                      <TableCell>
-                        <span className="text-sm text-muted-foreground">
-                          {staff.assignedPatients.length > 0
-                            ? `${staff.assignedPatients.length} patients`
-                            : "-"}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem>
-                              <Eye className="h-4 w-4 mr-2" />
-                              View Profile
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <Edit className="h-4 w-4 mr-2" />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem className="text-destructive">
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Remove
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="capitalize">{staff.role}</Badge>
+                        </TableCell>
+                        <TableCell>{staff.department}</TableCell>
+                        <TableCell>
+                          <Badge
+                            variant="secondary"
+                            className={cn(
+                              "text-xs",
+                              staff.isActive ? "bg-green-500/10 text-green-600" : "bg-muted text-muted-foreground"
+                            )}
+                          >
+                            {staff.isActive ? "Active" : "Inactive"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem>
+                                <Eye className="h-4 w-4 mr-2" />
+                                View Profile
+                              </DropdownMenuItem>
+                              <DropdownMenuItem>
+                                <Edit className="h-4 w-4 mr-2" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem className="text-destructive">
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Remove
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -294,7 +283,7 @@ export default function AdminMasterPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Patient</TableHead>
-                    <TableHead>Room</TableHead>
+                    <TableHead>Department</TableHead>
                     <TableHead>Condition</TableHead>
                     <TableHead>Assigned Nurse</TableHead>
                     <TableHead>Assigned Doctor</TableHead>
@@ -302,66 +291,63 @@ export default function AdminMasterPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {mockPatients.slice(0, 6).map((patient) => {
-                    const assignedNurse = mockStaff.find(
-                      (s) => s.role === "Nurse" && s.assignedPatients.includes(patient.id)
-                    );
-                    const assignedDoctor = mockStaff.find(
-                      (s) => s.role === "Doctor" && s.assignedPatients.includes(patient.id)
-                    );
+                  {patients.slice(0, 10).map((patient) => {
+                    const nurse = patient.attendingNurse && typeof patient.attendingNurse !== "string"
+                      ? (patient.attendingNurse as User) : null;
+                    const doctor = patient.attendingDoctor && typeof patient.attendingDoctor !== "string"
+                      ? (patient.attendingDoctor as User) : null;
 
                     return (
-                      <TableRow key={patient.id}>
+                      <TableRow key={patient._id}>
                         <TableCell>
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center">
                               <span className="text-sm font-semibold">
-                                {patient.name.split(" ").map((n) => n[0]).join("")}
+                                {getInitials(patient.name)}
                               </span>
                             </div>
                             <div>
                               <p className="font-medium">{patient.name}</p>
-                              <p className="text-xs text-muted-foreground">{patient.id}</p>
+                              <p className="text-xs text-muted-foreground">{patient.patientId}</p>
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell>{patient.roomNumber || patient.bedNumber || "-"}</TableCell>
+                        <TableCell>{patient.department}</TableCell>
                         <TableCell>
                           <Badge
                             variant="secondary"
                             className={cn(
                               patient.status === "critical" && "bg-destructive/10 text-destructive",
                               patient.status === "warning" && "bg-amber-500/10 text-amber-600",
-                              patient.status === "stable" && "bg-green-500/10 text-green-600",
-                              patient.status === "normal" && "bg-primary/10 text-primary"
+                              patient.status === "normal" && "bg-green-500/10 text-green-600"
                             )}
                           >
                             {patient.status}
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          {assignedNurse ? (
+                          {nurse ? (
                             <div className="flex items-center gap-2">
                               <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
                                 <span className="text-[10px] font-semibold text-primary">
-                                  {assignedNurse.avatar}
+                                  {getInitials(nurse.name)}
                                 </span>
                               </div>
-                              <span className="text-sm">{assignedNurse.name}</span>
+                              <span className="text-sm">{nurse.name}</span>
                             </div>
                           ) : (
                             <span className="text-muted-foreground">Unassigned</span>
                           )}
                         </TableCell>
                         <TableCell>
-                          {assignedDoctor ? (
+                          {doctor ? (
                             <div className="flex items-center gap-2">
                               <div className="w-6 h-6 rounded-full bg-blue-500/10 flex items-center justify-center">
                                 <span className="text-[10px] font-semibold text-blue-600">
-                                  {assignedDoctor.avatar}
+                                  {getInitials(doctor.name)}
                                 </span>
                               </div>
-                              <span className="text-sm">{assignedDoctor.name}</span>
+                              <span className="text-sm">{doctor.name}</span>
                             </div>
                           ) : (
                             <span className="text-muted-foreground">Unassigned</span>
@@ -391,29 +377,40 @@ export default function AdminMasterPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {mockActivityLogs.map((log) => (
-                  <div
-                    key={log.id}
-                    className="flex items-start gap-4 p-4 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
-                  >
-                    <div className="text-2xl">{activityTypeIcons[log.type]}</div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-medium">{log.staffName}</span>
-                        <span className="text-muted-foreground">{log.action}</span>
+              {activitiesLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+              ) : recentActivities.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  <Activity className="h-10 w-10 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">No recent activity</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {recentActivities.map((log) => (
+                    <div
+                      key={log._id}
+                      className="flex items-start gap-4 p-4 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="text-2xl">{getActivityIcon(log.action)}</div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-medium">{getActivityUser(log)}</span>
+                          <span className="text-muted-foreground">{log.action}</span>
+                        </div>
+                        <p className="text-sm text-muted-foreground mt-0.5">{log.description}</p>
                       </div>
-                      <p className="text-sm text-muted-foreground mt-0.5">{log.target}</p>
+                      <div className="text-xs text-muted-foreground whitespace-nowrap">
+                        {new Date(log.createdAt).toLocaleTimeString("en-US", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </div>
                     </div>
-                    <div className="text-xs text-muted-foreground whitespace-nowrap">
-                      {new Date(log.timestamp).toLocaleTimeString("en-US", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
