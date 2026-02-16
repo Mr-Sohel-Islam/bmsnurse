@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Bed, User, Clock, Loader2 } from "lucide-react";
-import { useBeds } from "@/hooks/useBeds";
+import { useBeds, useReleaseBed } from "@/hooks/useBeds";
 import { usePatients } from "@/hooks/usePatients";
 import { AssignBedModal } from "@/components/modals/AssignBedModal";
 import type { Bed as BedType, Patient } from "@/types/api";
@@ -27,6 +27,7 @@ export function BedManagement() {
   const [assignModal, setAssignModal] = useState<{ open: boolean; patientId: string; patientName: string }>({
     open: false, patientId: '', patientName: '',
   });
+  const releaseBed = useReleaseBed();
 
   // Unassigned patients (not in a bed) for the "Assign Patient" button
   const unassignedPatients = (patientsResponse?.data || []).filter((p) => !p.isInBed);
@@ -120,6 +121,18 @@ export function BedManagement() {
                           <Clock className="h-3 w-3" />
                           <span>Since {new Date(patient.admissionDate).toLocaleDateString()}</span>
                         </div>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          className="w-full mt-1"
+                          disabled={releaseBed.isPending}
+                          onClick={() => releaseBed.mutate(bed._id)}
+                        >
+                          {releaseBed.isPending ? (
+                            <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                          ) : null}
+                          Release Bed
+                        </Button>
                       </div>
                     )}
 
