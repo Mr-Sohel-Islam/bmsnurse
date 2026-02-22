@@ -1,31 +1,34 @@
 const mongoose = require('mongoose');
+const config = require('./index');
 
 const connectDB = async () => {
   try {
-    const conn = await mongoose.connect(process.env.MONGODB_URI, {
-      // Mongoose 6+ no longer needs these options, but keeping for clarity
+    const conn = await mongoose.connect(config.mongoUri, {
+      // These options are default in Mongoose 6+, but explicit for clarity
+      maxPoolSize: 10,
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 45000,
     });
 
     console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
-
+    console.log(`📦 Database: ${conn.connection.name}`);
+    
     // Handle connection events
     mongoose.connection.on('error', (err) => {
-      console.error(`❌ MongoDB connection error: ${err}`);
+      console.error('MongoDB connection error:', err);
     });
 
     mongoose.connection.on('disconnected', () => {
-      console.log('⚠️ MongoDB disconnected');
+      console.warn('MongoDB disconnected. Attempting to reconnect...');
     });
 
-    // Graceful shutdown
-    process.on('SIGINT', async () => {
-      await mongoose.connection.close();
-      console.log('MongoDB connection closed due to app termination');
-      process.exit(0);
+    mongoose.connection.on('reconnected', () => {
+      console.log('MongoDB reconnected');
     });
 
+    return conn;
   } catch (error) {
-    console.error(`❌ Error connecting to MongoDB: ${error.message}`);
+    console.error('❌ MongoDB connection failed:', error.message);
     process.exit(1);
   }
 };
