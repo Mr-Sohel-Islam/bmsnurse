@@ -22,8 +22,19 @@ export interface User {
   id: string;
   email: string;
   name: string;
-  role: 'admin' | 'doctor' | 'nurse' | 'staff';
-  department: 'OPD' | 'IPD' | 'Emergency' | 'ICU' | 'General' | 'Admin';
+  firstName?: string;
+  lastName?: string;
+  role:
+    | 'admin'
+    | 'doctor'
+    | 'nurse'
+    | 'staff'
+    | 'super_admin'
+    | 'hospital_admin'
+    | 'head_nurse'
+    | 'receptionist'
+    | 'billing_staff';
+  department?: string;
   phone?: string;
   avatar?: string;
   lastLogin?: string;
@@ -58,8 +69,11 @@ export interface RegisterData {
 export interface Patient {
   _id: string;
   patientId: string;
-  name: string;
-  age: number;
+  name?: string;
+  firstName?: string;
+  lastName?: string;
+  age?: number;
+  dateOfBirth?: string;
   gender: 'male' | 'female' | 'other';
   bloodType?: string;
   phone?: string;
@@ -70,8 +84,8 @@ export interface Patient {
     phone: string;
     relationship: string;
   };
-  department: 'OPD' | 'IPD' | 'Emergency' | 'ICU';
-  status: 'normal' | 'warning' | 'critical';
+  department?: 'OPD' | 'IPD' | 'Emergency' | 'ICU' | string;
+  status: 'normal' | 'warning' | 'critical' | 'stable' | 'admitted' | 'active' | 'discharged';
   diagnosis?: string;
   admissionDate: string;
   dischargeDate?: string;
@@ -86,6 +100,7 @@ export interface Patient {
 
 export interface CreatePatientData {
   name: string;
+  dateOfBirth?: string;
   age: number;
   gender: Patient['gender'];
   bloodType?: string;
@@ -114,6 +129,8 @@ export interface PatientStats {
   total: number;
   critical: number;
   inBed: number;
+  admitted?: number;
+  todayRegistrations?: number;
   byDepartment: Record<string, number>;
 }
 

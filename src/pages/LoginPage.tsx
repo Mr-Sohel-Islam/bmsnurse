@@ -215,7 +215,7 @@ export default function LoginPage() {
                       variant="outline"
                       size="sm"
                       className="text-xs h-8"
-                      onClick={() => fillDemo("admin@hospital.com", "admin123")}
+                      onClick={() => fillDemo("admin.dummy@hospital.com", "DummyAdmin@123")}
                     >
                       Admin
                     </Button>
@@ -224,7 +224,7 @@ export default function LoginPage() {
                       variant="outline"
                       size="sm"
                       className="text-xs h-8"
-                      onClick={() => fillDemo("sarah@hospital.com", "nurse123")}
+                      onClick={() => fillDemo("nurse.dummy@hospital.com", "DummyNurse@123")}
                     >
                       Nurse
                     </Button>

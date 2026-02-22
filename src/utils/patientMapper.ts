@@ -25,28 +25,49 @@ export function mapApiPatientToUI(
 ): UIPatient {
   const bedRef = apiPatient.bed;
   const bedNumber = typeof bedRef === 'object' && bedRef ? bedRef.bedNumber : null;
+  const firstName = (apiPatient as any).firstName || '';
+  const lastName = (apiPatient as any).lastName || '';
+  const fullName = apiPatient.name || `${firstName} ${lastName}`.trim();
+  const derivedAge = typeof apiPatient.age === 'number'
+    ? apiPatient.age
+    : (apiPatient as any).dateOfBirth
+      ? Math.max(0, new Date().getFullYear() - new Date((apiPatient as any).dateOfBirth).getFullYear())
+      : 0;
+  const registrationType = ((apiPatient as any).registrationType || '').toString().toUpperCase();
+  const mappedDepartment = apiPatient.department || registrationType || 'OPD';
+  const attendingNurseName =
+    (typeof apiPatient.attendingNurse === 'object' && apiPatient.attendingNurse
+      ? ((apiPatient.attendingNurse as any).name
+        || `${(apiPatient.attendingNurse as any).firstName || ''} ${(apiPatient.attendingNurse as any).lastName || ''}`.trim())
+      : '')
+    || (apiPatient as any).attendingNurseName
+    || (typeof (apiPatient as any).primaryNurse === 'object'
+      ? `${(apiPatient as any).primaryNurse?.firstName || ''} ${(apiPatient as any).primaryNurse?.lastName || ''}`.trim()
+      : '')
+    || (Array.isArray((apiPatient as any).assignedNurses) && (apiPatient as any).assignedNurses.length > 0
+      ? `${(apiPatient as any).assignedNurses[0]?.firstName || ''} ${(apiPatient as any).assignedNurses[0]?.lastName || ''}`.trim()
+      : '')
+    || 'Unassigned';
 
   return {
     id: apiPatient.patientId || apiPatient._id,
-    name: apiPatient.name,
-    age: apiPatient.age,
+    name: fullName || 'Unknown Patient',
+    age: derivedAge,
     gender: capitalize(apiPatient.gender) as UIPatient['gender'],
-    department: apiPatient.department === 'ICU' ? 'IPD' : apiPatient.department as UIPatient['department'],
+    department: mappedDepartment === 'ICU' ? 'IPD' : mappedDepartment as UIPatient['department'],
     bedNumber: bedNumber || null,
     roomNumber: null,
-    status: apiPatient.status === 'normal' ? 'normal' 
+    status: apiPatient.status === 'normal' ? 'normal'
       : apiPatient.status === 'warning' ? 'warning' 
       : apiPatient.status === 'critical' ? 'critical' 
       : 'stable',
     diagnosis: apiPatient.diagnosis || 'Not specified',
     admissionDate: apiPatient.admissionDate,
-    attendingNurse: typeof apiPatient.attendingNurse === 'object' && apiPatient.attendingNurse
-      ? (apiPatient.attendingNurse as any).name
-      : 'Unassigned',
+    attendingNurse: attendingNurseName,
     vitals: overrides?.vitals || defaultVitals,
     medications: overrides?.medications || [],
     notes: overrides?.notes || [],
-    isInBed: apiPatient.isInBed,
+    isInBed: Boolean(apiPatient.isInBed || (apiPatient as any).assignedBed || bedNumber),
   };
 }
 

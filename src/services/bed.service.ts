@@ -1,5 +1,6 @@
 import api from '@/lib/axios';
-import type { ApiResponse, Bed, BedOccupancy } from '@/types/api';
+import type { Bed, BedOccupancy } from '@/types/api';
+import { extractData, extractPaginated } from './apiAdapter';
 
 export const bedService = {
   // Get all beds
@@ -19,44 +20,53 @@ export const bedService = {
       });
     }
     
-    const response = await api.get<ApiResponse<Bed[]>>(`/beds?${params.toString()}`);
-    return response.data.data;
+    const response = await api.get(`/beds?${params.toString()}`);
+    return extractPaginated<Bed>(response.data, 'beds').data;
   },
 
   // Get bed occupancy stats
   async getBedOccupancy(): Promise<BedOccupancy> {
-    const response = await api.get<ApiResponse<BedOccupancy>>('/beds/occupancy');
-    return response.data.data;
+    const response = await api.get('/beds/stats');
+    const data = extractData<any>(response.data);
+    return {
+      total: data.total || 0,
+      occupied: data.occupied || 0,
+      available: data.available || 0,
+      maintenance: data.maintenance || 0,
+      reserved: data.reserved || 0,
+      occupancyRate: Number(data.occupancyRate || 0),
+      byDepartment: data.byWard || {},
+    };
   },
 
   // Get single bed
   async getBed(id: string): Promise<Bed> {
-    const response = await api.get<ApiResponse<Bed>>(`/beds/${id}`);
-    return response.data.data;
+    const response = await api.get(`/beds/${id}`);
+    return extractData<Bed>(response.data, 'bed');
   },
 
   // Create bed (admin only)
   async createBed(data: Partial<Bed>): Promise<Bed> {
-    const response = await api.post<ApiResponse<Bed>>('/beds', data);
-    return response.data.data;
+    const response = await api.post('/beds', data);
+    return extractData<Bed>(response.data, 'bed');
   },
 
   // Update bed (admin only)
   async updateBed(id: string, data: Partial<Bed>): Promise<Bed> {
-    const response = await api.put<ApiResponse<Bed>>(`/beds/${id}`, data);
-    return response.data.data;
+    const response = await api.put(`/beds/${id}`, data);
+    return extractData<Bed>(response.data, 'bed');
   },
 
   // Assign patient to bed
   async assignPatient(bedId: string, patientId: string): Promise<Bed> {
-    const response = await api.put<ApiResponse<Bed>>(`/beds/${bedId}/assign`, { patientId });
-    return response.data.data;
+    const response = await api.post(`/beds/${bedId}/assign`, { patientId });
+    return extractData<Bed>(response.data, 'bed');
   },
 
   // Release bed
   async releaseBed(id: string): Promise<Bed> {
-    const response = await api.put<ApiResponse<Bed>>(`/beds/${id}/release`);
-    return response.data.data;
+    const response = await api.post(`/beds/${id}/release`);
+    return extractData<Bed>(response.data, 'bed');
   },
 };
 
